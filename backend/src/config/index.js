@@ -43,6 +43,7 @@ const config = {
   googleApiKey: getVal('GOOGLE_API_KEY', 'api_keys.google_api_key'),
   openaiApiKey: getVal('OPENAI_API_KEY', 'api_keys.openai_api_key'),
   geminiBaseUrl: process.env.GEMINI_BASE_URL || '',
+  geminiApiVersion: 'v1',
 
   falApiKey: process.env.FAL_API_KEY || '',
   falBaseUrl: process.env.FAL_BASE_URL || 'https://fal.run',

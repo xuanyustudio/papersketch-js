@@ -33,7 +33,7 @@ export class VisualizerAgent extends BaseAgent {
           useImageGeneration: false,
           systemPrompt: PLOT_VISUALIZER_SYSTEM_PROMPT,
           promptTemplate: (desc) =>
-            `Generate a Plotly.js figure specification object for a statistical plot based on the following detailed description. The output must be a complete, valid JSON object with "data" and optional "layout"/"config", directly usable by Plotly.newPlot().\n\nDescription:\n${desc}\n\nPlotly figure JSON:`,
+            `Generate a Plotly.js figure specification object for a statistical plot based on the following detailed description. The output must be a complete, valid JSON object with "data" and optional "layout"/"config", directly usable by Plotly.newPlot().\n\nCRITICAL LANGUAGE RULE: ALL text in the spec (layout.title.text, axis titles, data[*].name, annotations, tick labels) MUST match the language of the Description below. If the Description is in Chinese, use Simplified Chinese (简体中文); if it is in English, use English. Do NOT mix languages.\n\nDescription:\n${desc}\n\nPlotly figure JSON:`,
         }
       : {
           taskName: 'diagram',

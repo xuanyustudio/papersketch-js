@@ -7,13 +7,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export const IMAGES_ROOT = resolve(__dirname, '../../../data/images')
 
 // Stage name map for readable filenames
+// critic_desc{n} → critic_r{n+1} so the filename matches the UI label (Critic R1, R2, R3...)
 const STAGE_FILENAME = {
   desc0: 'planner',
   stylist_desc0: 'stylist',
-  critic_desc0: 'critic_r0',
-  critic_desc1: 'critic_r1',
-  critic_desc2: 'critic_r2',
-  critic_desc3: 'critic_r3',
+  critic_desc0: 'critic_r1',
+  critic_desc1: 'critic_r2',
+  critic_desc2: 'critic_r3',
+  critic_desc3: 'critic_r4',
   vanilla: 'vanilla',
 }
 
@@ -55,6 +56,9 @@ export function saveImage(jobId, candidateIdx, stageKey, base64, taskName = 'dia
  *
  * Original key:   target_diagram_desc0_base64_jpg
  * Replaced with:  target_diagram_desc0_image_url = "/images/..."
+ *
+ * Also back-fills _steps[].output.image_url with the resolved URLs so that
+ * the history step log can display clickable thumbnails.
  */
 export function persistResultImages(jobId, candidateIdx, result, taskName = 'diagram') {
   if (!result) return result
@@ -69,7 +73,8 @@ export function persistResultImages(jobId, candidateIdx, result, taskName = 'dia
     if (!base64 || base64.length < 100) continue
 
     // Extract stage key: target_diagram_<stageKey>_base64_jpg → <stageKey>
-    const match = key.match(/^target_\w+_(.+)_base64_jpg$/)
+    // Use [^_]+ (not \w+) so the task name part doesn't greedily consume underscores
+    const match = key.match(/^target_[^_]+_(.+)_base64_jpg$/)
     const stageKey = match ? match[1] : key
 
     const url = saveImage(jobId, candidateIdx, stageKey, base64, taskName)
@@ -83,7 +88,55 @@ export function persistResultImages(jobId, candidateIdx, result, taskName = 'dia
     // image is never silently lost. The record will be larger but still usable.
   }
 
+  // Back-fill _steps[].output.image_url using the now-resolved _image_url keys.
+  // During pipeline execution steps are recorded before images are saved to disk,
+  // so image_url is null at capture time but the URLs are available after this function runs.
+  lean._steps = repairStepsImageUrls(lean._steps, lean, taskName)
+
   return lean
+}
+
+/**
+ * Back-fill image_url inside each _steps entry using the top-level _image_url keys
+ * that were resolved by persistResultImages.
+ */
+function repairStepsImageUrls(steps, leanResult, taskName) {
+  if (!Array.isArray(steps) || !steps.length) return steps
+  const t = taskName || 'diagram'
+
+  return steps.map((s) => {
+    if (s.output?.type === 'image' && !s.output.image_url) {
+      const round = s.output.round ?? 0
+      let imageUrl = null
+      if (round === 0) {
+        imageUrl = leanResult[`target_${t}_stylist_desc0_image_url`]
+          || leanResult[`target_${t}_desc0_image_url`]
+          || null
+      } else {
+        const criticRound = round - 1
+        imageUrl = leanResult[`target_${t}_critic_desc${criticRound}_image_url`] || null
+      }
+      if (imageUrl) {
+        return {
+          ...s,
+          output: { ...s.output, image_url: imageUrl, image_in_memory_only: false },
+        }
+      }
+    }
+
+    // Vanilla step: the output type is 'text' but may carry an image_url
+    if (s.output?.type === 'text' && s.name === 'Vanilla' && !s.output.image_url) {
+      const imageUrl = leanResult[`target_${t}_vanilla_image_url`] || null
+      if (imageUrl) {
+        return {
+          ...s,
+          output: { ...s.output, image_url: imageUrl, has_image: true, image_in_memory_only: false },
+        }
+      }
+    }
+
+    return s
+  })
 }
 
 /**
@@ -105,7 +158,7 @@ export function createCheckpointSnapshot(jobId, candidateIdx, data, taskName = '
       continue
     }
 
-    const match = key.match(/^target_\w+_(.+)_base64_jpg$/)
+    const match = key.match(/^target_[^_]+_(.+)_base64_jpg$/)
     const stageKey = match ? match[1] : key
 
     // Only save if not already on disk (check for existing URL key)

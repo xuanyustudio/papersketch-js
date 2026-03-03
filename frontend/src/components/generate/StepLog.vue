@@ -41,9 +41,19 @@
                 </div>
               </template>
 
-              <!-- Text output (Planner / Stylist) -->
-              <template v-else-if="s.output?.type === 'text' && s.output.text">
-                <el-collapse class="inner-collapse">
+              <!-- Text output (Planner / Stylist / Vanilla) -->
+              <template v-else-if="s.output?.type === 'text'">
+                <!-- Vanilla may carry a generated image -->
+                <div v-if="s.output.image_url" class="step-output image-output">
+                  <img
+                    :src="s.output.image_url"
+                    class="step-thumbnail"
+                    @click="$emit('preview', s.output.image_url)"
+                    title="点击查看大图"
+                  />
+                  <span class="thumb-hint">Vanilla 直接生成图像</span>
+                </div>
+                <el-collapse v-if="s.output.text" class="inner-collapse">
                   <el-collapse-item :title="`📝 查看描述文字（${s.output.text.length} 字符）`">
                     <pre class="output-pre">{{ s.output.text }}</pre>
                   </el-collapse-item>

@@ -14,7 +14,7 @@ export class VanillaAgent extends BaseAgent {
           useImageGeneration: false,
           systemPrompt: PLOT_VANILLA_SYSTEM_PROMPT,
           promptTemplate: (content, visualIntent) =>
-            `Generate a Plotly.js figure specification object for a statistical plot.\n\nRaw Data: ${content}\nVisual Intent: ${visualIntent}\n\nPlotly figure JSON:`,
+            `Generate a Plotly.js figure specification object for a statistical plot.\n\nCRITICAL LANGUAGE RULE: ALL text in the spec (layout.title.text, axis titles, data[*].name, annotations, tick labels) MUST match the language of the Raw Data and Visual Intent below. If they are in Chinese, use Simplified Chinese (简体中文); if in English, use English. Do NOT mix languages.\n\nRaw Data: ${content}\nVisual Intent: ${visualIntent}\n\nPlotly figure JSON:`,
         }
       : {
           taskName: 'diagram',

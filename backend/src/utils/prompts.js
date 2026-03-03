@@ -88,7 +88,7 @@ To help you understand the task better, and grasp the principles for generating 
 Your description should be as detailed as possible. Semantically, clearly describe each element and their connections. Formally, include various details such as background style (typically pure white or very light pastel), colors, line thickness, icon styles, etc. Remember: vague or unclear specifications will only make the generated figure worse, not better.
 
 ** LANGUAGE REQUIREMENT: **
-All text labels, module names, step names, arrow annotations, titles, and any text appearing in the diagram MUST be specified in Simplified Chinese (简体中文). For example, instead of writing "Input Layer", write "输入层"; instead of "Feature Extraction", write "特征提取". Every label in your description must be the Chinese version.
+All text labels, module names, step names, arrow annotations, and titles in the diagram description MUST be written in the **same language as the input Methodology Section and Figure Caption**. If the input is in Chinese, use Simplified Chinese (简体中文) for all labels. If the input is in English, use English for all labels. Do NOT mix languages.
 `.trim()
 
 export const PLOT_PLANNER_SYSTEM_PROMPT = `
@@ -98,6 +98,9 @@ To help you understand the task better, and grasp the principles for generating 
 
 ** IMPORTANT: **
 Your description should be as detailed as possible. For content, explain the precise mapping of variables to visual channels (x, y, hue) and explicitly enumerate every raw data point's coordinate to be drawn to ensure accuracy. For presentation, specify the exact aesthetic parameters, including specific HEX color codes, font sizes for all labels, line widths, marker dimensions, legend placement, and grid styles. You should learn from the examples' content presentation and aesthetic design (e.g., color schemes).
+
+** LANGUAGE REQUIREMENT: **
+All axis titles, tick labels, legend entries, data labels, and annotations MUST be written in the **same language as the input Raw Data description and Visual Intent**. If the input is in Chinese, use Simplified Chinese (简体中文). If the input is in English, use English. Do NOT mix languages.
 `.trim()
 
 // ─── Stylist ─────────────────────────────────────────────────
@@ -121,7 +124,7 @@ Our goal is to generate high-quality, publication-ready diagrams, given the meth
 3. **Respect Diversity:** Different domains have different styles. If the input describes a specific style that works well, keep it.
 4. **Enrich Details:** If the input is plain, enrich it with specific visual attributes (colors, fonts, line styles, layout adjustments) defined in the guidelines.
 5. **Handle Icons with Care:** Be cautious when modifying icons as they may carry specific semantic meanings (e.g., snowflake = frozen/non-trainable, flame = trainable).
-6. **Preserve Chinese Labels:** All text labels in the description are in Simplified Chinese. **Do NOT translate any Chinese text to English.** Preserve all Chinese labels exactly as they are.
+6. **Preserve Label Language:** All text labels in the description use a specific language (Chinese or English). **Do NOT translate labels to another language.** Preserve all labels exactly as they are.
 
 ## OUTPUT
 Output ONLY the final polished Detailed Description. Do not include any conversational text or explanations.
@@ -138,6 +141,7 @@ You are provided with a preliminary description of a statistical plot to be gene
 1. **Enrich Details:** Focus on specifying visual attributes (colors, fonts, line styles, layout adjustments) defined in the guidelines.
 2. **Preserve Content:** Do NOT alter the semantic content, logic, or quantitative results of the plot. Your job is purely aesthetic refinement.
 3. **Context Awareness:** Use the provided "Raw Data" and "Visual Intent" to understand the emphasis of the plot.
+4. **Preserve Label Language:** All text labels in the description use a specific language. **Do NOT translate labels to another language.** Preserve all labels exactly as they are.
 
 ## INPUT DATA
 - **Detailed Description**: [The preliminary description of the plot]
@@ -153,10 +157,11 @@ Output ONLY the final polished Detailed Description. Do not include any conversa
 
 export const DIAGRAM_VISUALIZER_SYSTEM_PROMPT =
   'You are an expert scientific diagram illustrator. Generate high-quality scientific diagrams based on user requests. ' +
-  '**CRITICAL: All text labels, module names, arrow annotations, titles, and any other text in the diagram MUST be written in Simplified Chinese (简体中文). Do NOT use English for any visible text in the diagram.**'
+  '**CRITICAL LANGUAGE RULE: All text labels, module names, arrow annotations, and titles in the diagram MUST match the language of the provided description. If the description uses Chinese, all diagram text must be in Simplified Chinese (简体中文). If the description uses English, all diagram text must be in English. Do NOT mix languages.**'
 
 export const PLOT_VISUALIZER_SYSTEM_PROMPT =
-  'You are an expert data visualization specialist. Generate Plotly.js figure specifications (JSON with data/layout/config) for statistical plots based on user requests. Always output valid JSON wrapped in ```json``` code blocks.'
+  'You are an expert data visualization specialist. Generate Plotly.js figure specifications (JSON with data/layout/config) for statistical plots based on user requests. Always output valid JSON wrapped in ```json``` code blocks. ' +
+  '**CRITICAL LANGUAGE RULE: All text in the Plotly spec (layout.title.text, layout.xaxis.title.text, layout.yaxis.title.text, data[*].name, data[*].text, layout.legend.title.text, annotations[*].text) MUST match the language of the provided description. Chinese description → Chinese text; English description → English text. Do NOT mix languages.**'
 
 // ─── Critic ──────────────────────────────────────────────────
 
@@ -183,7 +188,7 @@ You are also provided with the 'Detailed Description' corresponding to the curre
 
 ** IMPORTANT: **
 Your Description should primarily be modifications based on the original description, rather than rewriting from scratch.
-All text labels in the description are in Simplified Chinese. **Do NOT translate any Chinese labels to English in your revised description.**
+All text labels in the description use a specific language. **Do NOT translate labels to another language in your revised description.** Preserve the original label language exactly.
 
 ## OUTPUT
 Provide your response strictly in the following JSON format:
@@ -209,6 +214,7 @@ Your task is to conduct a sanity check and provide a critique of the target plot
    - **Text QA:** Check for typographical errors, nonsensical text, or unclear labels.
    - **Validation of Values:** Verify the accuracy of all numerical values, axis scales, and data points.
    - **Caption Exclusion:** Ensure the figure caption text is **not** included within the image visual itself.
+   - **Language Consistency:** Verify that ALL visible text (axis titles, tick labels, legend entries, data labels, annotations) uses the same language as the input description. If any text is inconsistent (e.g., mixing Chinese and English), normalize it to match the description's language.
 
 2. Presentation
    - **Clarity & Readability:** Evaluate the overall visual clarity.
@@ -217,6 +223,9 @@ Your task is to conduct a sanity check and provide a critique of the target plot
 
 3. Handling Generation Failures
    - **Invalid Config:** If the target plot image is missing or replaced by a system notice, carefully analyze the "Detailed Description" for potential errors and provide a simplified, robust version.
+
+** IMPORTANT: **
+All text labels in the description use a specific language. **Do NOT translate labels to another language in your revised description.** Preserve the original label language exactly.
 
 ## OUTPUT
 \`\`\`json
@@ -231,10 +240,11 @@ Your task is to conduct a sanity check and provide a critique of the target plot
 
 export const DIAGRAM_VANILLA_SYSTEM_PROMPT =
   'You are an expert scientific diagram illustrator. Generate high-quality scientific diagrams based on user requests. ' +
-  '**CRITICAL: All text labels, module names, arrow annotations, titles, and any other text in the diagram MUST be written in Simplified Chinese (简体中文). Do NOT use English for any visible text in the diagram.**'
+  '**CRITICAL LANGUAGE RULE: All text labels, module names, arrow annotations, and titles MUST match the language of the provided input. Chinese input → Chinese diagram text (简体中文); English input → English diagram text. Do NOT mix languages.**'
 
 export const PLOT_VANILLA_SYSTEM_PROMPT =
-  'You are an expert data visualization specialist. Generate Plotly.js figure specifications (JSON with data/layout/config) for statistical plots based on user requests. Always output valid JSON wrapped in ```json``` code blocks.'
+  'You are an expert data visualization specialist. Generate Plotly.js figure specifications (JSON with data/layout/config) for statistical plots based on user requests. Always output valid JSON wrapped in ```json``` code blocks. ' +
+  '**CRITICAL LANGUAGE RULE: All text in the Plotly spec (layout.title.text, axis titles, data[*].name, annotations) MUST match the language of the provided input. Chinese input → Chinese labels (简体中文); English input → English labels. Do NOT mix languages.**'
 
 // ─── Polish ──────────────────────────────────────────────────
 

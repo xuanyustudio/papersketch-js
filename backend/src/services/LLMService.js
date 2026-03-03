@@ -13,12 +13,21 @@ export class LLMService {
   constructor() {
     if (config.googleApiKey) {
       const geminiOpts = { apiKey: config.googleApiKey }
-      // 中转站支持：替换 Gemini API 的 base URL
-      if (config.geminiBaseUrl) {
-        geminiOpts.httpOptions = { baseUrl: config.geminiBaseUrl }
+      // 中转站支持：替换 Gemini API 的 base URL，并指定 API 版本
+      geminiOpts.httpOptions = {
+        ...(config.geminiBaseUrl ? { baseUrl: config.geminiBaseUrl } : {}),
+        apiVersion: config.geminiApiVersion,
       }
       this.gemini = new GoogleGenAI(geminiOpts)
-      logger.info(`Gemini initialized via ${config.geminiBaseUrl || 'Google official API'}`)
+      logger.info(`Gemini initialized via ${config.geminiBaseUrl || 'Google official API'}  apiVersion=${config.geminiApiVersion}`)
+
+      // 中转站通常也兼容 OpenAI /chat/completions 格式，供非 Gemini 模型（如 DeepSeek）使用
+      // baseURL 取中转站地址 + /v1；API key 与 Gemini 共用
+      const relayBase = config.geminiBaseUrl
+        ? `${config.geminiBaseUrl.replace(/\/$/, '')}/v1`
+        : 'https://api.openai.com/v1'
+      this.relay = new OpenAI({ apiKey: config.googleApiKey, baseURL: relayBase })
+      logger.info(`Relay (OpenAI-compat) initialized via ${relayBase}`)
     }
     if (config.openaiApiKey) {
       this.openai = new OpenAI({ apiKey: config.openaiApiKey })
@@ -56,7 +65,11 @@ export class LLMService {
     const imgCount = contents.filter((c) => c.type === 'image').length
     logger.info(`[LLM] generateText  model=${model}  inputChars=${inputLen}  images=${imgCount}`)
     const t0 = Date.now()
-    const fn = () => this.#callGeminiText({ model, systemPrompt, contents, genConfig, inputLen, imgCount })
+    // Route: Gemini models → GoogleGenAI SDK; everything else → OpenAI-compat relay
+    const isGemini = this.#isGeminiModel(model)
+    const fn = isGemini
+      ? () => this.#callGeminiText({ model, systemPrompt, contents, genConfig, inputLen, imgCount })
+      : () => this.#callRelayText({ model, systemPrompt, contents, inputLen, imgCount })
     const result = await this.#callWithRetry(fn, config.textMaxRetryAttempts, config.retryDelayMs)
     logger.info(`[LLM] generateText  ✓ done  elapsed=${Date.now() - t0}ms  outputChars=${result?.length ?? 0}`)
     return result
@@ -100,11 +113,65 @@ export class LLMService {
     return result
   }
 
+  // ─── Private: model routing ───────────────────────────────
+
+  /** Gemini 模型名以 "gemini-" 开头（或 "models/gemini-"） */
+  #isGeminiModel(model) {
+    return model.startsWith('gemini-') || model.startsWith('models/gemini-')
+  }
+
+  // ─── Private: OpenAI-compat relay text (DeepSeek / Claude / etc.) ─
+
+  async #callRelayText({ model, systemPrompt, contents, inputLen = 0, imgCount = 0 }) {
+    if (!this.relay) throw new Error('Relay not initialized (GOOGLE_API_KEY / GEMINI_BASE_URL not set)')
+
+    const relayUrl = `${this.relay.baseURL}/chat/completions`
+    logger.info(`[LLM] → POST ${relayUrl}  model=${model}`)
+
+    const messages = []
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
+
+    // Build user message; image parts are passed as vision content blocks if supported
+    const userContent = contents.map((c) => {
+      if (c.type === 'text') return { type: 'text', text: c.text }
+      if (c.type === 'image') {
+        return {
+          type: 'image_url',
+          image_url: { url: `data:${c.mimeType || 'image/jpeg'};base64,${c.imageBase64}` },
+        }
+      }
+      return { type: 'text', text: '' }
+    })
+    // If only text parts, simplify to string
+    messages.push({
+      role: 'user',
+      content: userContent.every((p) => p.type === 'text')
+        ? userContent.map((p) => p.text).join('')
+        : userContent,
+    })
+
+    const textTimeoutMs = this.#computeTextTimeoutMs(inputLen, imgCount)
+    const timeoutSec = Math.round(textTimeoutMs / 1000)
+    logger.info(`[LLM] generateText  timeout=${timeoutSec}s  dynamic=${config.textTimeoutDynamicEnabled ? 'on' : 'off'}`)
+
+    const apiCall = this.relay.chat.completions.create({
+      model,
+      messages,
+      temperature: config.temperature,
+      max_tokens: config.maxOutputTokens,
+    })
+
+    const response = await this.#withTimeout(apiCall, textTimeoutMs, `Text generation timeout (${timeoutSec}s)`)
+    return response.choices?.[0]?.message?.content ?? ''
+  }
+
   // ─── Private: Gemini text ──────────────────────────────────
 
   async #callGeminiText({ model, systemPrompt, contents, genConfig, inputLen = 0, imgCount = 0 }) {
     if (!this.gemini) throw new Error('Google API key not configured')
 
+    const base = (config.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
+    logger.info(`[LLM] → POST ${base}/${config.geminiApiVersion}/models/${model}:generateContent`)
     const parts = this.#buildParts(contents)
 
     const apiCall = this.gemini.models.generateContent({
@@ -130,6 +197,9 @@ export class LLMService {
 
   async #callGeminiImage({ model, systemPrompt, contents, aspectRatio, imageSize }) {
     if (!this.gemini) throw new Error('Google API key not configured')
+
+    const base = (config.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
+    logger.info(`[LLM] → POST ${base}/${config.geminiApiVersion}/models/${model}:generateContent  (image)`)
 
     const parts = this.#buildParts(contents)
 
@@ -189,6 +259,9 @@ export class LLMService {
 
   async #callFalImage({ model, contents, aspectRatio }) {
     if (!config.falApiKey) throw new Error('FAL API key not configured')
+
+    const falBase = config.falBaseUrl || 'https://fal.run'
+    logger.info(`[LLM] → fal.ai subscribe  endpoint=${falBase}  model=${model}`)
 
     const textPart = contents.find((c) => c.type === 'text')
     const prompt = textPart?.text ?? ''
@@ -288,6 +361,9 @@ export class LLMService {
       throw new Error('Doubao base URL not configured (set DOUBAO_BASE_URL)')
     }
 
+    const doubaoBase = config.doubaoBaseUrl.replace(/\/$/, '')
+    logger.info(`[LLM] → POST ${doubaoBase}/v1/images/generations  model=${model}`)
+
     const textPart = contents.find((c) => c.type === 'text')
     const prompt = textPart?.text ?? ''
 
@@ -315,7 +391,9 @@ export class LLMService {
 
   /** Categorise an error for clearer log messages */
   #classifyError(err) {
-    const msg = err.message ?? ''
+    const raw = err.message ?? ''
+    // Unwrap JSON error bodies from relay/proxy responses
+    const msg = this.#unwrapErrMsg(raw)
     const status = err.status ?? err.response?.status
 
     if (msg.includes('timeout') || msg.includes('Timeout')) return '⏱ TIMEOUT'
@@ -325,18 +403,35 @@ export class LLMService {
     if (status === 500 || status === 503 || msg.includes('overloaded')) return '🔥 SERVER_ERROR'
     if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT')) return '🌐 NETWORK_ERROR'
     if (status === 401 || status === 403) return '🔑 AUTH_ERROR'
+    // shell_api_error / empty message from relay — treat as transient server error
+    if (raw.includes('shell_api_error') || raw.trim() === '' || msg.trim() === '') return '🔥 SERVER_ERROR'
     return '❓ UNKNOWN'
+  }
+
+  /** Unwrap the inner `message` string from a stringified JSON error body */
+  #unwrapErrMsg(raw) {
+    try {
+      const outer = JSON.parse(raw)
+      // e.g. {"error":{"message":"...", "type":"..."}}
+      return outer?.error?.message ?? outer?.message ?? raw
+    } catch {
+      return raw
+    }
   }
 
   /** True only for transient errors that are worth retrying */
   #isRetryable(err) {
-    const msg = err.message ?? ''
+    const raw = err.message ?? ''
+    const msg = this.#unwrapErrMsg(raw)
     const status = err.status ?? err.response?.status
 
     // Never retry permanent errors
     if (msg.includes('not found') || msg.includes('is not supported') || msg.includes('"code":"404"') || status === 404) return false
     if (msg.includes('insufficient_quota') || msg.includes('quota failed')) return false
     if (status === 401 || status === 403) return false
+
+    // shell_api_error with blank message = relay hiccup → retry
+    if (raw.includes('shell_api_error') || raw.trim() === '' || msg.trim() === '') return true
 
     // Retry transient errors (including timeout)
     return (
