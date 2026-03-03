@@ -1,6 +1,6 @@
 {
   "name": "papersketch-js-backend",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "PaperSketch JS Backend - Node.js rewrite of the PaperBanana multi-agent pipeline",
   "type": "module",
   "main": "src/index.js",

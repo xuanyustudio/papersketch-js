@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import generateRouter from './generate.js'
@@ -12,13 +12,18 @@ const router = Router()
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const envFilePath = resolve(__dirname, '../../.env')
 
+// Read version from package.json — single source of truth
+const { version } = JSON.parse(
+  readFileSync(resolve(__dirname, '../../package.json'), 'utf8')
+)
+
 router.get('/health', (req, res) => {
   const envFileExists = existsSync(envFilePath)
   res.json({
     success: true,
     data: {
       status: 'ok',
-      version: '1.0.0',
+      version,
       geminiConfigured: Boolean(config.googleApiKey),
       openaiConfigured: Boolean(config.openaiApiKey),
       dataDir: config.dataDir || null,

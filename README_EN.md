@@ -6,10 +6,12 @@
 
 An enhanced JavaScript edition of [PaperBanana](https://github.com/dwzhu-pku/PaperBanana) and PaperVizAgent
 
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18.0-brightgreen.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen.svg)](https://nodejs.org/)
 [![Vue](https://img.shields.io/badge/vue-3.x-42b883.svg)](https://vuejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/xuanyustudio/papersketch-js/pulls)
+[![Changelog](https://img.shields.io/badge/changelog-view-lightgrey.svg)](./CHANGELOG.md)
 
 [中文](./README.md) · [Project Story](./docs/PROJECT_STORY.md) · [Architecture](./docs/ARCHITECTURE.md) · [API Docs](./docs/API.md) · [Deployment](./docs/DEPLOYMENT.md) · [Progress](./docs/PROGRESS.md)
 

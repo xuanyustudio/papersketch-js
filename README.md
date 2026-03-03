@@ -4,12 +4,14 @@
 
 **基于 Vue 3 + Node.js 的学术论文插图自动生成平台**
 
-[PaperBanana](https://github.com/dwzhu-pku/PaperBanana) 和 PaperVizAgent 的 **JavaScript 改进增强版本（JS Edition+）**
+PaperBanana 和 PaperVizAgent 的 **JavaScript 改进增强版本（JS Edition+）**
 
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18.0-brightgreen.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen.svg)](https://nodejs.org/)
 [![Vue](https://img.shields.io/badge/vue-3.x-42b883.svg)](https://vuejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/xuanyustudio/papersketch-js/pulls)
+[![Changelog](https://img.shields.io/badge/changelog-查看更新-lightgrey.svg)](./CHANGELOG.md)
 
 [English](./README_EN.md) · [项目缘起](./docs/PROJECT_STORY.md) · [系统架构](./docs/ARCHITECTURE.md) · [API 文档](./docs/API.md) · [部署文档](./docs/DEPLOYMENT.md) · [开发进度](./docs/PROGRESS.md)
 

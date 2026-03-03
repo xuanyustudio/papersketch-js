@@ -1,6 +1,26 @@
 
+# Dependencies
 frontend/node_modules
 backend/node_modules
-backend/.env
+
+# Build output
 frontend/dist
-data
+
+# Environment secrets
+backend/.env
+
+# Runtime data (SQLite DB + generated images)
+data/
+
+# Logs
+backend/logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
