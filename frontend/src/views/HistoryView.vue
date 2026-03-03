@@ -31,7 +31,7 @@
 
       <el-table-column label="模式" width="140">
         <template #default="{ row }">
-          <el-tag size="small" type="info">{{ row.exp_mode || '—' }}</el-tag>
+          <el-tag size="small" type="info">{{ row.exp_mode_label || getExpModeLabel(row.exp_mode) }}</el-tag>
         </template>
       </el-table-column>
 
@@ -115,7 +115,9 @@
           <el-descriptions-item label="任务ID">
             <code class="job-id">{{ currentDetail.id }}</code>
           </el-descriptions-item>
-          <el-descriptions-item label="流水线模式">{{ currentDetail.exp_mode }}</el-descriptions-item>
+          <el-descriptions-item label="流水线模式">
+            {{ currentDetail.exp_mode_label || getExpModeLabel(currentDetail.exp_mode) }}
+          </el-descriptions-item>
           <el-descriptions-item label="任务类型">{{ currentDetail.task_name }}</el-descriptions-item>
           <el-descriptions-item label="检索策略">{{ currentDetail.retrieval_setting }}</el-descriptions-item>
           <el-descriptions-item label="宽高比">{{ currentDetail.aspect_ratio }}</el-descriptions-item>
@@ -226,6 +228,7 @@ import { useRouter } from 'vue-router'
 import { useGenerateStore } from '@/stores/generateStore.js'
 import api from '@/api/index.js'
 import StepLog from '@/components/generate/StepLog.vue'
+import { getExpModeLabel } from '@/constants/expModes.js'
 
 const router = useRouter()
 const generateStore = useGenerateStore()

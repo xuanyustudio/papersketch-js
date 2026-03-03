@@ -23,6 +23,12 @@ const routes = [
     component: () => import('@/views/HistoryView.vue'),
     meta: { title: '历史记录' },
   },
+  {
+    path: '/help',
+    name: 'Help',
+    component: () => import('@/views/HelpView.vue'),
+    meta: { title: '帮助中心' },
+  },
 ]
 
 const router = createRouter({

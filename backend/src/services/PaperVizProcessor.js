@@ -131,7 +131,11 @@ export class PaperVizProcessor {
       onPlotRenderRequest: plotlyCallback,
     })
     const criticAgent = new CriticAgent({ expConfig: mkConfig(), llmService })
-    const vanillaAgent = new VanillaAgent({ expConfig: mkConfig(), llmService })
+    const vanillaAgent = new VanillaAgent({
+      expConfig: mkConfig(),
+      llmService,
+      onPlotRenderRequest: plotlyCallback,
+    })
 
     let result
     switch (mode) {
@@ -379,10 +383,14 @@ function extractStepOutput(stepName, data, taskType) {
   }
 
   if (stepName === 'Vanilla') {
+    const imageUrl = data[`target_${t}_vanilla_image_url`] || null
+    const hasBase64 = Boolean(data[`target_${t}_vanilla_base64_jpg`])
     return {
       type: 'text',
       text: data[`target_${t}_vanilla_desc`] || data[`target_${t}_desc0`] || '',
-      image_url: data[`target_${t}_vanilla_image_url`] || null,
+      image_url: imageUrl,
+      has_image: Boolean(imageUrl) || hasBase64,
+      image_in_memory_only: !imageUrl && hasBase64,
     }
   }
 
@@ -390,18 +398,28 @@ function extractStepOutput(stepName, data, taskType) {
   if (visMatch) {
     const round = parseInt(visMatch[1], 10)
     let imageUrl = null
+    let hasBase64 = false
     let descText = ''
     if (round === 0) {
       imageUrl = data[`target_${t}_stylist_desc0_image_url`]
         || data[`target_${t}_desc0_image_url`]
         || null
+      hasBase64 = Boolean(data[`target_${t}_stylist_desc0_base64_jpg`] || data[`target_${t}_desc0_base64_jpg`])
       descText = data[`target_${t}_stylist_desc0`] || data[`target_${t}_desc0`] || ''
     } else {
       const criticRound = round - 1
       imageUrl = data[`target_${t}_critic_desc${criticRound}_image_url`] || null
+      hasBase64 = Boolean(data[`target_${t}_critic_desc${criticRound}_base64_jpg`])
       descText = data[`target_${t}_critic_desc${criticRound}`] || ''
     }
-    return { type: 'image', round, image_url: imageUrl, desc_text: descText }
+    return {
+      type: 'image',
+      round,
+      image_url: imageUrl,
+      desc_text: descText,
+      has_image: Boolean(imageUrl) || hasBase64,
+      image_in_memory_only: !imageUrl && hasBase64,
+    }
   }
 
   const criticMatch = stepName.match(/^Critic\[(\d+)\]$/)

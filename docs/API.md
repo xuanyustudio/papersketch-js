@@ -60,11 +60,11 @@
 | `methodContent` | string | 是 | 论文方法节内容（支持 Markdown） |
 | `caption` | string | 是 | 图注 |
 | `taskName` | `"diagram"` \| `"plot"` | 否 | 任务类型，默认 `"diagram"` |
-| `expMode` | string | 否 | 流水线模式，默认 `"demo_full"` |
+| `expMode` | string | 否 | 流水线模式，默认 `"demo_full"`（`demo_planner_critic`=智能迭代、`demo_full`=全流程增强、`vanilla`=快速直出） |
 | `retrievalSetting` | `"auto"` \| `"random"` \| `"none"` | 否 | 检索策略，默认 `"auto"` |
-| `numCandidates` | number | 否 | 并行候选数量 1-20，默认 5 |
+| `numCandidates` | number | 否 | 并行候选数量 1-5，默认 3 |
 | `aspectRatio` | `"16:9"` \| `"21:9"` \| `"3:2"` \| `"1:1"` | 否 | 图片宽高比，默认 `"16:9"` |
-| `maxCriticRounds` | number | 否 | Critic 最大轮数 1-5，默认 3 |
+| `maxCriticRounds` | number | 否 | Critic 最大轮数 1-3，默认 3 |
 | `modelName` | string | 否 | 覆盖默认文本模型名称 |
 
 **响应：**
@@ -98,6 +98,27 @@
 ```
 
 `status` 可能值：`"queued"` | `"running"` | `"completed"` | `"failed"`
+
+---
+
+### GET /api/history
+
+历史任务列表（分页）。
+
+查询参数：`page`（默认 1）、`pageSize`（默认 20，最大 50）
+
+返回中的每个任务会包含：
+
+- `exp_mode`：归一化后的内部模式值（如 `demo_full`）
+- `exp_mode_label`：用户可直接显示的模式名（如“全流程增强”）
+
+---
+
+### GET /api/history/:jobId
+
+历史任务详情（含候选结果、步骤日志）。
+
+返回同样包含 `exp_mode` 与 `exp_mode_label`，前端优先展示 `exp_mode_label`。
 
 ---
 
@@ -140,7 +161,7 @@ import { io } from 'socket.io-client'
 
 const socket = io('http://localhost:3000', {
   transports: ['websocket'],
-  reconnectionAttempts: 5
+  reconnectionAttempts: Infinity
 })
 ```
 

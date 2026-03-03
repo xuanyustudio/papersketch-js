@@ -15,13 +15,14 @@ const jobs = new Map()
  * Build an expConfig object from socket request params
  */
 function buildExpConfig(params) {
+  const maxCriticRounds = Math.min(Math.max(parseInt(params.maxCriticRounds || 3, 10), 1), 3)
   return {
     taskName: params.taskName || 'diagram',
     expMode: params.expMode || 'demo_full',
     retrievalSetting: params.retrievalSetting || 'auto',
     modelName: params.modelName || config.defaultModelName,
     imageModelName: params.imageModelName || config.defaultImageModelName,
-    maxCriticRounds: params.maxCriticRounds || 3,
+    maxCriticRounds,
     dataDir: config.dataDir,
     temperature: config.temperature,
   }
@@ -45,16 +46,17 @@ export function registerSocketHandlers(socket) {
     const expConfig = buildExpConfig(params)
 
     // Build input data list
+    const maxCriticRounds = Math.min(Math.max(parseInt(params.maxCriticRounds || 3, 10), 1), 3)
     const baseInput = {
       filename: 'web_input',
       caption: params.caption,
       content: params.methodContent,
       visual_intent: params.caption,
       additional_info: { rounded_ratio: params.aspectRatio || '16:9' },
-      max_critic_rounds: params.maxCriticRounds || 3,
+      max_critic_rounds: maxCriticRounds,
     }
 
-    const numCandidates = Math.min(params.numCandidates || 5, 20)
+    const numCandidates = Math.min(Math.max(parseInt(params.numCandidates || 3, 10), 1), 5)
     const dataList = Array.from({ length: numCandidates }, (_, i) => ({
       ...JSON.parse(JSON.stringify(baseInput)),
       filename: `candidate_${i}`,
@@ -81,7 +83,7 @@ export function registerSocketHandlers(socket) {
       modelName: params.modelName,
       methodContent: params.methodContent,
       caption: params.caption,
-      maxCriticRounds: params.maxCriticRounds || 3,
+      maxCriticRounds,
     })
 
     // ─── Plotly render callback (for plot tasks): backend local render ────────────

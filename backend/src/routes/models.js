@@ -15,10 +15,17 @@ router.get('/image', (req, res) => {
     else if (m.provider === 'fal') available = Boolean(config.falApiKey)
     else if (m.provider === 'openai') available = Boolean(config.openaiApiKey)
     else if (m.provider === 'doubao') available = Boolean(config.doubaoApiKey && config.doubaoBaseUrl)
-    return { ...m, available }
+    return { ...m, available, isDefault: m.id === config.defaultImageModelName }
   })
 
-  res.json({ success: true, data: models, error: null })
+  res.json({
+    success: true,
+    data: models,
+    error: null,
+    meta: {
+      defaultImageModelName: config.defaultImageModelName || '',
+    },
+  })
 })
 
 export default router

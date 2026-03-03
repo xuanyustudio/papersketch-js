@@ -6,6 +6,7 @@ import logger from '../utils/logger.js'
 export class VanillaAgent extends BaseAgent {
   constructor(opts) {
     super(opts)
+    this.onPlotRenderRequest = opts.onPlotRenderRequest || null
     const isPlot = this.expConfig.taskName === 'plot'
     this.taskConfig = isPlot
       ? {
@@ -55,6 +56,14 @@ export class VanillaAgent extends BaseAgent {
         const plotlySpec = this.#parsePlotlySpec(raw)
         if (plotlySpec) {
           data[`target_${taskName}_vanilla_plotly_spec`] = plotlySpec
+          if (this.onPlotRenderRequest) {
+            const rendered = await this.onPlotRenderRequest(plotlySpec, `target_${taskName}_vanilla`)
+            if (rendered) {
+              data[`target_${taskName}_vanilla_base64_jpg`] = rendered.includes(',')
+                ? rendered.split(',')[1]
+                : rendered
+            }
+          }
         }
       }
     } catch (err) {

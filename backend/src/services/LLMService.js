@@ -56,8 +56,8 @@ export class LLMService {
     const imgCount = contents.filter((c) => c.type === 'image').length
     logger.info(`[LLM] generateText  model=${model}  inputChars=${inputLen}  images=${imgCount}`)
     const t0 = Date.now()
-    const fn = () => this.#callGeminiText({ model, systemPrompt, contents, genConfig })
-    const result = await this.#callWithRetry(fn, config.maxRetryAttempts, config.retryDelayMs)
+    const fn = () => this.#callGeminiText({ model, systemPrompt, contents, genConfig, inputLen, imgCount })
+    const result = await this.#callWithRetry(fn, config.textMaxRetryAttempts, config.retryDelayMs)
     logger.info(`[LLM] generateText  ✓ done  elapsed=${Date.now() - t0}ms  outputChars=${result?.length ?? 0}`)
     return result
   }
@@ -102,7 +102,7 @@ export class LLMService {
 
   // ─── Private: Gemini text ──────────────────────────────────
 
-  async #callGeminiText({ model, systemPrompt, contents, genConfig }) {
+  async #callGeminiText({ model, systemPrompt, contents, genConfig, inputLen = 0, imgCount = 0 }) {
     if (!this.gemini) throw new Error('Google API key not configured')
 
     const parts = this.#buildParts(contents)
@@ -119,8 +119,10 @@ export class LLMService {
       },
     })
 
-    // 60s timeout for text generation
-    const response = await this.#withTimeout(apiCall, 60000, 'Text generation timeout (60s)')
+    const textTimeoutMs = this.#computeTextTimeoutMs(inputLen, imgCount)
+    const timeoutSec = Math.round(textTimeoutMs / 1000)
+    logger.info(`[LLM] generateText  timeout=${timeoutSec}s  dynamic=${config.textTimeoutDynamicEnabled ? 'on' : 'off'}`)
+    const response = await this.#withTimeout(apiCall, textTimeoutMs, `Text generation timeout (${timeoutSec}s)`)
     return response.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
   }
 
@@ -152,8 +154,9 @@ export class LLMService {
 
     let response
     try {
-      // 3-minute timeout for image generation
-      response = await this.#withTimeout(apiCall, 180000, 'Image generation timeout (3min)')
+      const imageTimeoutMs = Math.max(config.imageTimeoutMs || 180000, 1000)
+      const timeoutSec = Math.round(imageTimeoutMs / 1000)
+      response = await this.#withTimeout(apiCall, imageTimeoutMs, `Image generation timeout (${timeoutSec}s)`)
     } finally {
       clearInterval(heartbeat)
     }
@@ -198,12 +201,14 @@ export class LLMService {
 
     let imageUrl
     try {
+      const imageTimeoutMs = Math.max(config.imageTimeoutMs || 180000, 1000)
+      const timeoutSec = Math.round(imageTimeoutMs / 1000)
       const result = await this.#withTimeout(
         fal.subscribe(model, {
           input: { prompt, image_size: imageSize, num_images: 1 },
         }),
-        180000,
-        'fal.ai image generation timeout (3min)',
+        imageTimeoutMs,
+        `fal.ai image generation timeout (${timeoutSec}s)`,
       )
       imageUrl = result?.data?.images?.[0]?.url ?? result?.images?.[0]?.url ?? null
     } finally {
@@ -238,6 +243,22 @@ export class LLMService {
         setTimeout(() => reject(new Error(label)), ms)
       ),
     ])
+  }
+
+  #computeTextTimeoutMs(inputLen, imgCount) {
+    const base = Math.max(config.textTimeoutMs || 120000, 1000)
+    if (!config.textTimeoutDynamicEnabled) return base
+
+    const baseChars = Math.max(config.textTimeoutBaseChars || 3000, 1)
+    const addPerChars = Math.max(config.textTimeoutAddPerChars || 1000, 1)
+    const addMs = Math.max(config.textTimeoutAddMs || 10000, 0)
+    const perImageMs = Math.max(config.textTimeoutPerImageMs || 15000, 0)
+    const maxMs = Math.max(config.textTimeoutMaxMs || 240000, base)
+
+    const extraChars = Math.max((inputLen || 0) - baseChars, 0)
+    const charBuckets = Math.ceil(extraChars / addPerChars)
+    const dynamicMs = base + charBuckets * addMs + Math.max(imgCount || 0, 0) * perImageMs
+    return Math.min(dynamicMs, maxMs)
   }
 
   // ─── Private: OpenAI image generation ─────────────────────
@@ -317,8 +338,9 @@ export class LLMService {
     if (msg.includes('insufficient_quota') || msg.includes('quota failed')) return false
     if (status === 401 || status === 403) return false
 
-    // Retry transient errors
+    // Retry transient errors (including timeout)
     return (
+      msg.toLowerCase().includes('timeout') ||
       status === 429 ||
       status === 500 ||
       status === 503 ||

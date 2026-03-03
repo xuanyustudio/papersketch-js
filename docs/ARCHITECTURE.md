@@ -87,7 +87,8 @@ WebSocket: generate:all_complete
 
 ### 2. 统计图（Plot）生成流程
 
-统计图流程的关键差异：**VisualizerAgent 生成 Plotly figure JSON，由后端 headless 渲染为图片后送入 CriticAgent**。
+统计图流程的关键差异：**先生成 Plotly figure JSON，再由后端 headless 渲染为图片**。  
+该路径适用于 Visualizer 流程，也适用于 `vanilla`（快速直出）模式。
 
 ```
 VisualizerAgent
@@ -151,15 +152,13 @@ class LLMService {
 
 根据 `expMode` 编排 Agent 流水线：
 
-| expMode | 流水线 |
-|---------|--------|
-| `vanilla` | VanillaAgent |
-| `dev_planner` | Retriever → Planner → Visualizer |
-| `dev_planner_stylist` | Retriever → Planner → Stylist → Visualizer |
-| `dev_planner_critic` | Retriever → Planner → Visualizer → Critic(×N) |
-| `dev_full` | Retriever → Planner → Stylist → Visualizer → Critic(×N) |
-| `demo_planner_critic` | 同 dev_planner_critic（不评估） |
-| `demo_full` | 同 dev_full（不评估） |
+| 显示名（前端） | expMode（API） | 流水线 |
+|---------|--------|--------|
+| 快速直出 | `vanilla` | VanillaAgent |
+| 智能迭代（推荐） | `demo_planner_critic` | Retriever → Planner → Visualizer → Critic(×N) |
+| 全流程增强 | `demo_full` | Retriever → Planner → Stylist → Visualizer → Critic(×N) |
+
+> 兼容说明：历史中的 `dev_planner_critic`、`dev_full` 会被归一化映射到 `demo_planner_critic`、`demo_full`。
 
 ## WebSocket 事件协议
 

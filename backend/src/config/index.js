@@ -68,6 +68,15 @@ const config = {
   maxOutputTokens: 50000,
   maxRetryAttempts: 5,
   retryDelayMs: 5000,
+  textTimeoutMs: parseInt(process.env.TEXT_TIMEOUT_MS || '120000', 10),
+  imageTimeoutMs: parseInt(process.env.IMAGE_TIMEOUT_MS || '180000', 10),
+  textMaxRetryAttempts: parseInt(process.env.TEXT_MAX_RETRY_ATTEMPTS || '2', 10),
+  textTimeoutDynamicEnabled: process.env.TEXT_TIMEOUT_DYNAMIC_ENABLED !== 'false',
+  textTimeoutBaseChars: parseInt(process.env.TEXT_TIMEOUT_BASE_CHARS || '3000', 10),
+  textTimeoutAddPerChars: parseInt(process.env.TEXT_TIMEOUT_ADD_PER_CHARS || '1000', 10),
+  textTimeoutAddMs: parseInt(process.env.TEXT_TIMEOUT_ADD_MS || '10000', 10),
+  textTimeoutMaxMs: parseInt(process.env.TEXT_TIMEOUT_MAX_MS || '240000', 10),
+  textTimeoutPerImageMs: parseInt(process.env.TEXT_TIMEOUT_PER_IMAGE_MS || '15000', 10),
 }
 
 export default config

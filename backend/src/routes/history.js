@@ -3,6 +3,31 @@ import { historyService } from '../services/HistoryService.js'
 
 const router = Router()
 
+const MODE_ALIASES = {
+  dev_planner_critic: 'demo_planner_critic',
+  dev_full: 'demo_full',
+}
+
+const MODE_LABELS = {
+  demo_planner_critic: '智能迭代（推荐）',
+  demo_full: '全流程增强',
+  vanilla: '快速直出',
+}
+
+function normalizeExpMode(mode) {
+  if (!mode) return 'demo_full'
+  return MODE_ALIASES[mode] || mode
+}
+
+function withModeLabel(job) {
+  const normalized = normalizeExpMode(job?.exp_mode)
+  return {
+    ...job,
+    exp_mode: normalized,
+    exp_mode_label: MODE_LABELS[normalized] || normalized,
+  }
+}
+
 /**
  * GET /api/history
  * List all jobs with pagination (no result blobs, metadata only)
@@ -11,7 +36,8 @@ router.get('/', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1)
   const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20))
   const result = historyService.listJobs({ page, pageSize })
-  res.json({ success: true, data: result, error: null })
+  const jobs = (result.jobs || []).map(withModeLabel)
+  res.json({ success: true, data: { ...result, jobs }, error: null })
 })
 
 /**
@@ -23,7 +49,7 @@ router.get('/:jobId', (req, res) => {
   if (!detail) {
     return res.status(404).json({ success: false, data: null, error: 'Job not found' })
   }
-  res.json({ success: true, data: detail, error: null })
+  res.json({ success: true, data: withModeLabel(detail), error: null })
 })
 
 /**

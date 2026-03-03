@@ -62,7 +62,13 @@
                     />
                     <span class="thumb-hint">轮次 {{ s.output.round + 1 }} 生成图像</span>
                   </template>
-                  <span v-else class="no-img-hint">图像生成中或失败</span>
+                  <span v-else-if="s.output.has_image && s.output.image_in_memory_only" class="ok-img-hint">
+                    已生成（本轮无 URL，仅内存结果）
+                  </span>
+                  <span v-else-if="s.output.has_image" class="ok-img-hint">
+                    已生成（结果已写入当前候选）
+                  </span>
+                  <span v-else class="no-img-hint">该轮未生成图像（失败或被跳过）</span>
                 </div>
                 <el-collapse v-if="s.output.desc_text" class="inner-collapse">
                   <el-collapse-item :title="`📝 使用的描述（${s.output.desc_text.length} 字符）`">
@@ -225,6 +231,7 @@ function formatDuration(ms) {
 }
 .thumb-hint { font-size: 10px; color: #9ca3af; }
 .no-img-hint { color: #d1d5db; font-style: italic; }
+.ok-img-hint { color: #059669; font-size: 11px; }
 .early-stop { color: #059669; font-size: 11px; }
 
 .step-error {

@@ -2,7 +2,10 @@
   <div class="sidebar">
     <div class="logo" @click="$emit('toggle')">
       <span class="logo-icon">🍌</span>
-      <span v-if="!collapsed" class="logo-text">PaperSketch JS</span>
+      <div v-if="!collapsed" class="logo-text-wrap">
+        <span class="logo-text-main">智绘论文图</span>
+        <span class="logo-text-sub">PaperSketch JS</span>
+      </div>
     </div>
 
     <el-menu
@@ -31,8 +34,17 @@
     </el-menu>
 
     <div class="sidebar-bottom">
+      <router-link
+        to="/help"
+        class="help-link"
+        :title="collapsed ? '帮助中心' : ''"
+      >
+        <el-icon><QuestionFilled /></el-icon>
+        <span v-if="!collapsed">帮助中心</span>
+      </router-link>
+      <div class="bottom-divider" />
       <a
-        href="https://github.com/dwzhu-pku/PaperBanana"
+        href="https://github.com/xuanyustudio/papersketch-js"
         target="_blank"
         class="github-link"
         :title="collapsed ? 'GitHub' : ''"
@@ -72,10 +84,25 @@ const activeRoute = computed(() => route.path)
   flex-shrink: 0;
 }
 .logo-icon { font-size: 22px; }
-.logo-text {
+.logo-text-wrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  min-width: 0;
+}
+.logo-text-main {
   color: #facc15;
-  font-weight: 700;
-  font-size: 16px;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+.logo-text-sub {
+  color: #78716c;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  margin-top: 3px;
   white-space: nowrap;
 }
 .sidebar-menu {
@@ -86,6 +113,7 @@ const activeRoute = computed(() => route.path)
   padding: 12px 16px;
   border-top: 1px solid #292524;
 }
+.help-link,
 .github-link {
   display: flex;
   align-items: center;
@@ -95,5 +123,11 @@ const activeRoute = computed(() => route.path)
   font-size: 13px;
   transition: color 0.2s;
 }
+.help-link:hover,
 .github-link:hover { color: #d6d3d1; }
+.bottom-divider {
+  height: 1px;
+  background: #292524;
+  margin: 10px 0 8px;
+}
 </style>

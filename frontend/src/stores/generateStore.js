@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import api from '@/api/index.js'
+import { normalizeExpMode } from '@/constants/expModes.js'
 
 export const useGenerateStore = defineStore('generate', () => {
   // ─── State ─────────────────────────────────────────────────
@@ -19,9 +20,9 @@ export const useGenerateStore = defineStore('generate', () => {
   const methodContent = ref('')
   const caption = ref('')
   const taskName = ref('diagram')
-  const expMode = ref('demo_full')
+  const expMode = ref(normalizeExpMode('demo_full'))
   const retrievalSetting = ref('auto')
-  const numCandidates = ref(5)
+  const numCandidates = ref(3)
   const aspectRatio = ref('16:9')
   const maxCriticRounds = ref(3)
   const modelName = ref('')
@@ -185,11 +186,11 @@ export const useGenerateStore = defineStore('generate', () => {
     if (job.method_content) methodContent.value = job.method_content
     if (job.caption) caption.value = job.caption
     if (job.task_name) taskName.value = job.task_name
-    if (job.exp_mode) expMode.value = job.exp_mode
+    if (job.exp_mode) expMode.value = normalizeExpMode(job.exp_mode)
     if (job.retrieval_setting) retrievalSetting.value = job.retrieval_setting
-    if (job.num_candidates) numCandidates.value = job.num_candidates
+    if (job.num_candidates) numCandidates.value = Math.min(Math.max(job.num_candidates, 1), 5)
     if (job.aspect_ratio) aspectRatio.value = job.aspect_ratio
-    if (job.max_critic_rounds) maxCriticRounds.value = job.max_critic_rounds
+    if (job.max_critic_rounds) maxCriticRounds.value = Math.min(Math.max(job.max_critic_rounds, 1), 3)
     if (job.model_name) modelName.value = job.model_name
     if (job.image_model_name) imageModelName.value = job.image_model_name
   }
