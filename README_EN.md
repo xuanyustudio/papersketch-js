@@ -6,7 +6,7 @@
 
 An enhanced JavaScript edition of [PaperBanana](https://github.com/dwzhu-pku/PaperBanana) and PaperVizAgent
 
-[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen.svg)](https://nodejs.org/)
 [![Vue](https://img.shields.io/badge/vue-3.x-42b883.svg)](https://vuejs.org/)

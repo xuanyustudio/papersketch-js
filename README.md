@@ -6,7 +6,7 @@
 
 PaperBanana 和 PaperVizAgent 的 **JavaScript 改进增强版本（JS Edition+）**
 
-[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen.svg)](https://nodejs.org/)
 [![Vue](https://img.shields.io/badge/vue-3.x-42b883.svg)](https://vuejs.org/)
@@ -65,10 +65,13 @@ Retriever → Planner → Stylist → Visualizer → Critic（多轮迭代）
 | 🖼️ 多候选并行生成 | 单次任务支持 1-5 个候选同步生成 |
 | 📊 统计图后端渲染 | Plotly.js + Puppeteer headless，无需前端介入 |
 | ⚡ 实时进度推送 | WebSocket 逐步展示每个 Agent 的处理进度 |
-| 🔍 步骤日志溯源 | 每个候选的中间过程可逐步查看、回溯 |
+| 🔍 步骤日志溯源 | 每个候选的中间过程（含 Critic 精炼图）可逐步查看、回溯 |
 | 💾 本地持久化 | SQLite 历史记录 + 图片文件落盘，断电不丢 |
 | 🔄 中断自动恢复 | Checkpoint 机制，后端重启后续跑未完成任务 |
-| 🧠 多模型支持 | Gemini / fal.ai / 豆包（Doubao）可按需切换 |
+| 🧠 多模型支持 | Gemini / fal.ai / 豆包 t2i & i2i / OpenAI 兼容中转 |
+| ✏️ 手动精炼 | 上传已有图片，AI 对照风格指南给出修改意见并重绘 |
+| 📋 精炼历史 | 手动精炼记录单独存档，历史页"手动精炼"标签页随时查阅 |
+| 🌐 语言自适应 | 生成图的标签/注释随输入语言自动切换（中文→中文，英文→英文）|
 | 🆘 新手帮助中心 | 内置帮助页，含使用原理、上手步骤、常见问题 |
 
 ---
