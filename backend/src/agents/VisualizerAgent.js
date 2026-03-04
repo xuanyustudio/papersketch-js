@@ -93,14 +93,33 @@ export class VisualizerAgent extends BaseAgent {
     const cfg = this.taskConfig
     const prompt = cfg.promptTemplate(desc)
     const aspectRatio = data.additional_info?.rounded_ratio || '16:9'
+    const model = this.expConfig.imageModelName
+
+    // For Critic rounds, pass the previous image as reference for incremental improvement.
+    // - Gemini models: append image to contents (multi-modal input)
+    // - Doubao i2i models: pass as referenceImageBase64 (separate API field)
+    // - Doubao t2i / fal: text-to-image only, no reference image
+    const prevBase64 = this.#getPreviousImageBase64(data, descKey)
+    const isGeminiImageModel = model.startsWith('gemini-') || model.startsWith('models/gemini-')
+    const isDoubaoI2I = model.includes('i2i')
+
+    const contents = [{ type: 'text', text: prompt }]
+    if (isGeminiImageModel && prevBase64) {
+      contents.push({ type: 'image', imageBase64: prevBase64, mimeType: 'image/jpeg' })
+      contents.push({
+        type: 'text',
+        text: 'Based on this existing image, apply the improvements described above. Keep the overall layout and visual style; only revise the specific aspects mentioned.',
+      })
+    }
 
     try {
       const base64Png = await this.llmService.generateImage({
-        model: this.expConfig.imageModelName,
+        model,
         systemPrompt: cfg.systemPrompt,
-        contents: [{ type: 'text', text: prompt }],
+        contents,
         aspectRatio,
         imageSize: '1k',
+        referenceImageBase64: isDoubaoI2I ? (prevBase64 || null) : null,
       })
 
       if (base64Png) {
@@ -149,6 +168,26 @@ export class VisualizerAgent extends BaseAgent {
     } catch (err) {
       logger.error(`Plotly generation failed for ${descKey}`, { error: err.message })
     }
+  }
+
+  /**
+   * For Critic rounds, return the base64 of the image generated in the previous round
+   * so the model can use it as a reference for incremental improvement.
+   */
+  #getPreviousImageBase64(data, descKey) {
+    const taskName = this.taskConfig.taskName
+    const criticMatch = descKey.match(/critic_desc(\d+)$/)
+    if (!criticMatch) return null   // Not a critic round
+
+    const criticRound = parseInt(criticMatch[1], 10)
+    if (criticRound === 0) {
+      // Previous image is the Stylist or Planner result
+      return data[`target_${taskName}_stylist_desc0_base64_jpg`]
+        || data[`target_${taskName}_desc0_base64_jpg`]
+        || null
+    }
+    // Previous image is the last critic round result
+    return data[`target_${taskName}_critic_desc${criticRound - 1}_base64_jpg`] || null
   }
 
   #parsePlotlySpec(raw) {

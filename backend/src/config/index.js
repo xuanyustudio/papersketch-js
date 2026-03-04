@@ -52,6 +52,8 @@ const config = {
 
   defaultModelName: getVal('DEFAULT_MODEL_NAME', 'defaults.model_name'),
   defaultImageModelName: getVal('DEFAULT_IMAGE_MODEL_NAME', 'defaults.image_model_name'),
+  // 专门用于 PolishAgent 手动精炼的图片模型（支持 i2i 模型），不填则沿用 defaultImageModelName
+  polishImageModelName: process.env.IMAGE_POLISH_MODEL_NAME || '',
 
   dataDir: process.env.DATA_DIR || '',
   styleGuidesDir: process.env.STYLE_GUIDES_DIR || resolve(ROOT_DIR, 'PaperBanana-main', 'style_guides'),

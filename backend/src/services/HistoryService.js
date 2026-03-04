@@ -52,6 +52,21 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC)`)
 db.exec(`CREATE INDEX IF NOT EXISTS idx_candidates_job ON candidates(job_id)`)
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS refine_history (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at          INTEGER NOT NULL,
+    task_name           TEXT DEFAULT 'diagram',
+    model_name          TEXT,
+    original_image_url  TEXT,
+    polished_image_url  TEXT,
+    suggestions         TEXT,
+    processing_time_ms  INTEGER,
+    no_changes          INTEGER DEFAULT 0
+  )
+`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_refine_created ON refine_history(created_at DESC)`)
+
 // ─── Schema migrations (idempotent) ──────────────────────────
 // Add checkpoint columns if they don't exist (ALTER TABLE IF NOT EXISTS is not
 // supported in SQLite, so we swallow the "duplicate column" error).
@@ -191,6 +206,39 @@ export const historyService = {
   deleteJob(jobId) {
     db.prepare(`DELETE FROM jobs WHERE id = ?`).run(jobId)
     deleteJobImages(jobId)
+  },
+
+  // ─── Refine History API ────────────────────────────────────
+
+  saveRefineRecord({ taskName, modelName, originalImageUrl, polishedImageUrl, suggestions, processingTimeMs, noChanges }) {
+    const result = db.prepare(`
+      INSERT INTO refine_history
+        (created_at, task_name, model_name, original_image_url, polished_image_url, suggestions, processing_time_ms, no_changes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      Date.now(),
+      taskName || 'diagram',
+      modelName || null,
+      originalImageUrl || null,
+      polishedImageUrl || null,
+      (suggestions || '').slice(0, 5000),
+      processingTimeMs || 0,
+      noChanges ? 1 : 0,
+    )
+    return result.lastInsertRowid
+  },
+
+  listRefineHistory({ page = 1, pageSize = 20 } = {}) {
+    const offset = (page - 1) * pageSize
+    const records = db.prepare(`
+      SELECT * FROM refine_history ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).all(pageSize, offset)
+    const { total } = db.prepare(`SELECT COUNT(*) AS total FROM refine_history`).get()
+    return { records, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+  },
+
+  deleteRefineRecord(id) {
+    db.prepare(`DELETE FROM refine_history WHERE id = ?`).run(id)
   },
 
   // ─── Checkpoint API ────────────────────────────────────────

@@ -85,13 +85,16 @@ export class LLMService {
    * @param {string} [opts.imageSize] - e.g. '1k'
    * @returns {Promise<string|null>} - Base64 PNG string (no data URI prefix)
    */
-  async generateImage({ model, systemPrompt, contents, aspectRatio = '16:9', imageSize = '1k' }) {
+  async generateImage({ model, systemPrompt, contents, aspectRatio = '16:9', imageSize = '1k', referenceImageBase64 = null }) {
     logger.info(`[LLM] generateImage  model=${model}  aspectRatio=${aspectRatio}`)
     const t0 = Date.now()
 
     let result
     if (model.includes('gpt-image')) {
       const fn = () => this.#callOpenAIImage({ model, contents })
+      result = await this.#callWithRetry(fn, config.maxRetryAttempts, 30000)
+    } else if (model.startsWith('doubao-') && model.includes('i2i')) {
+      const fn = () => this.#callDoubaoI2IImage({ model, contents, referenceImageBase64 })
       result = await this.#callWithRetry(fn, config.maxRetryAttempts, 30000)
     } else if (model.startsWith('doubao-')) {
       const fn = () => this.#callDoubaoImage({ model, contents })
@@ -361,7 +364,7 @@ export class LLMService {
       throw new Error('Doubao base URL not configured (set DOUBAO_BASE_URL)')
     }
 
-    const doubaoBase = config.doubaoBaseUrl.replace(/\/$/, '')
+    const doubaoBase = config.doubaoBaseUrl.replace(/\/$/, '').replace(/\/v1$/, '')
     logger.info(`[LLM] → POST ${doubaoBase}/v1/images/generations  model=${model}`)
 
     const textPart = contents.find((c) => c.type === 'text')
@@ -385,6 +388,66 @@ export class LLMService {
     if (!imgRes.ok) throw new Error(`Failed to download doubao image: HTTP ${imgRes.status}`)
     const buf = Buffer.from(await imgRes.arrayBuffer())
     return buf.toString('base64')
+  }
+
+  // ─── Private: Doubao image-to-image editing ───────────────
+
+  async #callDoubaoI2IImage({ model, contents, referenceImageBase64 }) {
+    if (!this.doubao) throw new Error('Doubao API key not configured')
+    if (!config.doubaoBaseUrl) throw new Error('Doubao base URL not configured (set DOUBAO_BASE_URL)')
+
+    // Resolve reference image: prefer explicit param, then fall back to any image in contents
+    const imgBase64 = referenceImageBase64
+      || contents.find((c) => c.type === 'image')?.imageBase64
+      || null
+
+    if (!imgBase64) {
+      // No input image available — i2i is not usable for initial generation; skip gracefully
+      logger.warn(`[LLM] Doubao i2i model "${model}" has no reference image (initial generation). Skipping — use a t2i model for first-round generation.`)
+      return null
+    }
+
+    const textPart = contents.find((c) => c.type === 'text')
+    const prompt = textPart?.text ?? ''
+
+    // Strip trailing /v1 if already present in base URL to avoid /v1/v1/... duplication
+    const doubaoBase = config.doubaoBaseUrl.replace(/\/$/, '').replace(/\/v1$/, '')
+    logger.info(`[LLM] → POST ${doubaoBase}/v1/images/generations  model=${model}  (i2i)`)
+
+    const response = await fetch(`${doubaoBase}/v1/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.doubaoApiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        image: `data:image/jpeg;base64,${imgBase64}`,
+        response_format: 'b64_json',
+        size: '1k',
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Doubao i2i API error: HTTP ${response.status} - ${errText}`)
+    }
+
+    const json = await response.json()
+    const b64 = json?.data?.[0]?.b64_json
+    if (b64) return b64
+
+    const imageUrl = json?.data?.[0]?.url ?? null
+    if (imageUrl) {
+      const imgRes = await fetch(imageUrl)
+      if (!imgRes.ok) throw new Error(`Failed to download Doubao i2i image: HTTP ${imgRes.status}`)
+      const buf = Buffer.from(await imgRes.arrayBuffer())
+      return buf.toString('base64')
+    }
+
+    const preview = JSON.stringify(json)?.slice(0, 300)
+    throw new Error(`Doubao i2i response has no image. Raw: ${preview}`)
   }
 
   // ─── Private: retry helper ─────────────────────────────────

@@ -33,6 +33,10 @@ export const api = {
   listHistory: (params) => http.get('/history', { params }),
   getHistoryDetail: (jobId) => http.get(`/history/${jobId}`),
   deleteHistory: (jobId) => http.delete(`/history/${jobId}`),
+
+  // Refine history
+  listRefineHistory: (params) => http.get('/refine/history', { params }),
+  deleteRefineRecord: (id) => http.delete(`/refine/history/${id}`),
 }
 
 export default api

@@ -51,4 +51,10 @@ export const IMAGE_MODELS = [
     provider: 'doubao',
     requiresKey: 'doubaoApiKey',
   },
+  {
+    id: 'doubao-seededit-3-0-i2i-250628',
+    label: 'Doubao Seededit 3.0 I2I',
+    provider: 'doubao',
+    requiresKey: 'doubaoApiKey',
+  },
 ]

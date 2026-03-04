@@ -3,10 +3,18 @@
     <div class="history-header">
       <div>
         <h2 class="page-title">历史记录</h2>
-        <span class="page-sub">共 {{ pagination.total }} 条生成记录，持久化存储于本地 SQLite</span>
+        <span class="page-sub">持久化存储于本地 SQLite</span>
       </div>
-      <el-button :icon="Refresh" circle @click="loadList" :loading="loading" />
+      <el-button :icon="Refresh" circle @click="activeTab === 'generate' ? loadList() : loadRefineList()" :loading="loading || refineLoading" />
     </div>
+
+    <el-tabs v-model="activeTab" class="history-tabs">
+
+      <!-- ══════════ Tab 1: 生成历史 ══════════ -->
+      <el-tab-pane name="generate">
+        <template #label>
+          <span>生成历史 <el-badge :value="pagination.total" :max="999" type="info" /></span>
+        </template>
 
     <!-- Job list -->
     <el-table
@@ -96,6 +104,104 @@
       />
     </div>
 
+      </el-tab-pane>
+
+      <!-- ══════════ Tab 2: 手动精炼 ══════════ -->
+      <el-tab-pane name="refine">
+        <template #label>
+          <span>手动精炼 <el-badge :value="refinePagination.total" :max="999" type="warning" /></span>
+        </template>
+
+        <el-table
+          :data="refineRecords"
+          v-loading="refineLoading"
+          stripe
+          class="history-table"
+        >
+          <el-table-column label="时间" width="145">
+            <template #default="{ row }">
+              <span class="time-text">{{ formatTime(row.created_at) }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="任务" width="80">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.task_name === 'plot' ? 'warning' : ''">
+                {{ row.task_name === 'plot' ? '统计图' : '图表' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="原图" width="100" align="center">
+            <template #default="{ row }">
+              <img
+                v-if="row.original_image_url"
+                :src="row.original_image_url"
+                class="refine-thumb"
+                @click="previewImage = row.original_image_url; previewVisible = true"
+              />
+              <span v-else class="no-img">—</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="精炼后" width="100" align="center">
+            <template #default="{ row }">
+              <img
+                v-if="row.polished_image_url"
+                :src="row.polished_image_url"
+                class="refine-thumb"
+                @click="previewImage = row.polished_image_url; previewVisible = true"
+              />
+              <el-tag v-else size="small" type="info">无需修改</el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="改进建议" min-width="200" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="suggestion-text">{{ row.suggestions || '—' }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="模型" width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="time-text">{{ row.model_name || '—' }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="耗时" width="75" align="center">
+            <template #default="{ row }">
+              {{ row.processing_time_ms ? (row.processing_time_ms / 1000).toFixed(0) + 's' : '—' }}
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="70" align="center">
+            <template #default="{ row }">
+              <el-tooltip content="删除记录" placement="top">
+                <el-button
+                  size="small"
+                  type="danger"
+                  text
+                  :icon="Delete"
+                  @click.stop="deleteRefineRecord(row.id)"
+                />
+              </el-tooltip>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="refinePagination.page"
+            :page-size="refinePagination.pageSize"
+            :total="refinePagination.total"
+            layout="total, prev, pager, next"
+            @current-change="loadRefineList"
+          />
+        </div>
+
+      </el-tab-pane>
+    </el-tabs>
+
     <!-- Detail drawer -->
     <el-drawer
       v-model="drawerVisible"
@@ -172,7 +278,7 @@
 
               <!-- Stage timeline -->
               <div
-                v-if="getStageImages(c.result, currentDetail.task_name).length > 1"
+                v-if="getStageImages(c.result, currentDetail.task_name).length > 0"
                 class="hc-stages"
               >
                 <div
@@ -233,9 +339,15 @@ import { getExpModeLabel } from '@/constants/expModes.js'
 const router = useRouter()
 const generateStore = useGenerateStore()
 
+const activeTab = ref('generate')
+
 const loading = ref(false)
 const jobs = ref([])
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
+
+const refineLoading = ref(false)
+const refineRecords = ref([])
+const refinePagination = reactive({ page: 1, pageSize: 20, total: 0 })
 
 const drawerVisible = ref(false)
 const detailLoading = ref(false)
@@ -371,7 +483,34 @@ function statusLabel(row) {
   return '失败'
 }
 
-onMounted(loadList)
+async function loadRefineList() {
+  refineLoading.value = true
+  try {
+    const res = await api.listRefineHistory({ page: refinePagination.page, pageSize: refinePagination.pageSize })
+    refineRecords.value = res.data.records
+    refinePagination.total = res.data.total
+  } catch (e) {
+    ElMessage.error('加载精炼记录失败')
+  } finally {
+    refineLoading.value = false
+  }
+}
+
+async function deleteRefineRecord(id) {
+  await ElMessageBox.confirm('确定删除这条精炼记录吗？', '删除确认', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+  })
+  await api.deleteRefineRecord(id)
+  ElMessage.success('已删除')
+  loadRefineList()
+}
+
+onMounted(() => {
+  loadList()
+  loadRefineList()
+})
 </script>
 
 <style scoped>
@@ -432,5 +571,21 @@ onMounted(loadList)
   transition: border-color 0.15s;
 }
 .hc-stage-thumb:hover img { border-color: #eab308; }
+.history-tabs { flex: 1; display: flex; flex-direction: column; }
+:deep(.el-tabs__content) { flex: 1; overflow: auto; }
+:deep(.el-tabs__header) { margin-bottom: 12px; }
+
+.refine-thumb {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: zoom-in;
+  display: block;
+  margin: 0 auto;
+}
+.no-img { font-size: 12px; color: #9ca3af; }
+.suggestion-text { font-size: 12px; color: #374151; }
+
 .hc-stage-thumb span { font-size: 10px; color: #6b7280; }
 </style>
