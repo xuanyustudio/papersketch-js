@@ -4,16 +4,16 @@
       <span class="logo-icon">🍌</span>
       <div v-if="!collapsed" class="logo-text-wrap">
         <span class="logo-text-main">智绘论文图</span>
-        <span class="logo-text-sub">PaperSketch JS</span>
+        <span class="logo-text-sub">PaperSketch</span>
       </div>
     </div>
 
     <el-menu
       :default-active="activeRoute"
       :collapse="collapsed"
-      background-color="#1c1917"
-      text-color="#d6d3d1"
-      active-text-color="#facc15"
+      background-color="transparent"
+      text-color="#64748b"
+      active-text-color="#0891B2"
       router
       class="sidebar-menu"
     >
@@ -30,6 +30,11 @@
       <el-menu-item index="/history">
         <el-icon><Clock /></el-icon>
         <template #title>历史记录</template>
+      </el-menu-item>
+
+      <el-menu-item v-if="isAdmin" index="/admin">
+        <el-icon><Setting /></el-icon>
+        <template #title>管理后台</template>
       </el-menu-item>
     </el-menu>
 
@@ -59,12 +64,15 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore.js'
 
 defineProps({ collapsed: Boolean })
 defineEmits(['toggle'])
 
 const route = useRoute()
+const authStore = useAuthStore()
 const activeRoute = computed(() => route.path)
+const isAdmin = computed(() => authStore.user?.is_admin === 1)
 </script>
 
 <style scoped>
@@ -72,62 +80,120 @@ const activeRoute = computed(() => route.path)
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
+  border-right: 1px solid #f1f5f9;
 }
+
 .logo {
-  height: var(--header-height);
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 20px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #292524;
-  gap: 10px;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.logo:hover {
+  background: #f8fafc;
+}
+
+.logo-icon {
+  font-size: 28px;
   flex-shrink: 0;
 }
-.logo-icon { font-size: 22px; }
+
 .logo-text-wrap {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
-  min-width: 0;
+  overflow: hidden;
 }
+
 .logo-text-main {
-  color: #facc15;
-  font-weight: 800;
-  font-size: 17px;
-  line-height: 1.05;
+  color: #164E63;
+  font-weight: 700;
+  font-size: 16px;
   white-space: nowrap;
 }
+
 .logo-text-sub {
-  color: #78716c;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-  margin-top: 3px;
-  white-space: nowrap;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
+
 .sidebar-menu {
-  border-right: none;
   flex: 1;
+  border-right: none;
+  padding: 12px 8px;
 }
+
+.sidebar-menu :deep(.el-menu-item) {
+  height: 48px;
+  line-height: 48px;
+  border-radius: 12px;
+  margin: 4px 0;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover) {
+  background: #f1f5f9;
+  color: #0891B2;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.1) 0%, rgba(8, 145, 178, 0.05) 100%);
+  color: #0891B2;
+  font-weight: 600;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #0891B2;
+  border-radius: 0 4px 4px 0;
+}
+
+.sidebar-menu :deep(.el-icon) {
+  font-size: 20px;
+}
+
 .sidebar-bottom {
-  padding: 12px 16px;
-  border-top: 1px solid #292524;
+  padding: 16px;
+  border-top: 1px solid #f1f5f9;
 }
+
 .help-link,
 .github-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #78716c;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #64748b;
   text-decoration: none;
-  font-size: 13px;
-  transition: color 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
 }
+
 .help-link:hover,
-.github-link:hover { color: #d6d3d1; }
+.github-link:hover {
+  background: #f1f5f9;
+  color: #0891B2;
+}
+
 .bottom-divider {
   height: 1px;
-  background: #292524;
-  margin: 10px 0 8px;
+  background: #f1f5f9;
+  margin: 12px 0;
 }
 </style>

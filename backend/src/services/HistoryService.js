@@ -1,17 +1,20 @@
 // Uses Node.js built-in SQLite (requires Node >= 22.5, flag --experimental-sqlite)
 import { DatabaseSync } from 'node:sqlite'
 import { resolve, dirname } from 'path'
-import { mkdirSync } from 'fs'
+import { mkdirSync, existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import logger from '../utils/logger.js'
 import { persistResultImages, deleteJobImages } from '../utils/imageStore.js'
+import config from '../config/index.js'
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DB_DIR = resolve(__dirname, '../../../data')
+const DB_DIR = config.dataDir || resolve(__dirname, '../../../data')
 const DB_PATH = resolve(DB_DIR, 'history.db')
 
-mkdirSync(DB_DIR, { recursive: true })
+if (!existsSync(DB_DIR)) {
+  mkdirSync(DB_DIR, { recursive: true })
+}
 
 const db = new DatabaseSync(DB_PATH)
 
@@ -75,6 +78,12 @@ for (const col of ['checkpoint_stage TEXT', 'checkpoint_data TEXT']) {
 }
 // Add max_critic_rounds to jobs table for resume
 try { db.exec(`ALTER TABLE jobs ADD COLUMN max_critic_rounds INTEGER DEFAULT 3`) } catch { /* already exists */ }
+// Add organization_id for multi-tenant
+try { db.exec(`ALTER TABLE jobs ADD COLUMN organization_id INTEGER`) } catch { /* already exists */ }
+try { db.exec(`ALTER TABLE refine_history ADD COLUMN organization_id INTEGER`) } catch { /* already exists */ }
+// Add points_cost for points tracking
+try { db.exec(`ALTER TABLE jobs ADD COLUMN points_cost INTEGER DEFAULT 0`) } catch { /* already exists */ }
+try { db.exec(`ALTER TABLE refine_history ADD COLUMN points_cost INTEGER DEFAULT 0`) } catch { /* already exists */ }
 
 logger.info(`SQLite (node:sqlite) history DB ready at ${DB_PATH}`)
 
@@ -91,18 +100,20 @@ function candidateExists(jobId, candidateIdx) {
 
 export const historyService = {
   createJob({ jobId, expMode, taskName, retrievalSetting, numCandidates,
-    aspectRatio, modelName, methodContent, caption, maxCriticRounds }) {
+    aspectRatio, modelName, methodContent, caption, maxCriticRounds, organizationId, pointsCost }) {
     db.prepare(`
       INSERT OR IGNORE INTO jobs
         (id, created_at, status, exp_mode, task_name, retrieval_setting,
-         num_candidates, aspect_ratio, model_name, method_content, caption, max_critic_rounds)
-      VALUES (?, ?, 'running', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         num_candidates, aspect_ratio, model_name, method_content, caption, max_critic_rounds, organization_id, points_cost)
+      VALUES (?, ?, 'running', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       jobId, Date.now(), expMode, taskName, retrievalSetting,
       numCandidates, aspectRatio, modelName || null,
       (methodContent || '').slice(0, 5000),
       (caption || '').slice(0, 1000),
-      maxCriticRounds ?? 3
+      maxCriticRounds ?? 3,
+      organizationId || null,
+      pointsCost || 0
     )
   },
 
@@ -146,8 +157,11 @@ export const historyService = {
     `).run(Date.now(), totalTimeMs, jobId)
   },
 
-  listJobs({ page = 1, pageSize = 20 } = {}) {
+  listJobs({ page = 1, pageSize = 20, organizationId } = {}) {
     const offset = (page - 1) * pageSize
+    const whereClause = organizationId ? 'WHERE j.organization_id = ?' : ''
+    const params = organizationId ? [organizationId, pageSize, offset] : [pageSize, offset]
+    
     const jobs = db.prepare(`
       SELECT j.*,
         COUNT(c.id) AS total_candidates,
@@ -155,18 +169,23 @@ export const historyService = {
         SUM(CASE WHEN c.status = 'error' THEN 1 ELSE 0 END) AS failed_candidates
       FROM jobs j
       LEFT JOIN candidates c ON c.job_id = j.id
+      ${whereClause}
       GROUP BY j.id
       ORDER BY j.created_at DESC
       LIMIT ? OFFSET ?
-    `).all(pageSize, offset)
+    `).all(...params)
 
-    const { total } = db.prepare(`SELECT COUNT(*) AS total FROM jobs`).get()
-    return { jobs, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+    const totalQuery = organizationId 
+      ? db.prepare(`SELECT COUNT(*) AS total FROM jobs WHERE organization_id = ?`).get(organizationId)
+      : db.prepare(`SELECT COUNT(*) AS total FROM jobs`).get()
+    return { jobs, total: totalQuery.total, page, pageSize, totalPages: Math.ceil(totalQuery.total / pageSize) }
   },
 
-  getJobDetail(jobId) {
+  getJobDetail(jobId, organizationId) {
     const job = db.prepare(`SELECT * FROM jobs WHERE id = ?`).get(jobId)
     if (!job) return null
+    // 如果传入了 organizationId，检查是否匹配
+    if (organizationId && job.organization_id !== organizationId) return null
 
     const rawCandidates = db.prepare(
       `SELECT * FROM candidates WHERE job_id = ? ORDER BY candidate_idx ASC`
@@ -203,18 +222,21 @@ export const historyService = {
     return { ...job, candidates }
   },
 
-  deleteJob(jobId) {
+  deleteJob(jobId, organizationId) {
+    const job = db.prepare(`SELECT * FROM jobs WHERE id = ?`).get(jobId)
+    if (!job) return
+    if (organizationId && job.organization_id !== organizationId) return
     db.prepare(`DELETE FROM jobs WHERE id = ?`).run(jobId)
     deleteJobImages(jobId)
   },
 
   // ─── Refine History API ────────────────────────────────────
 
-  saveRefineRecord({ taskName, modelName, originalImageUrl, polishedImageUrl, suggestions, processingTimeMs, noChanges }) {
+  saveRefineRecord({ taskName, modelName, originalImageUrl, polishedImageUrl, suggestions, processingTimeMs, noChanges, organizationId, pointsCost }) {
     const result = db.prepare(`
       INSERT INTO refine_history
-        (created_at, task_name, model_name, original_image_url, polished_image_url, suggestions, processing_time_ms, no_changes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (created_at, task_name, model_name, original_image_url, polished_image_url, suggestions, processing_time_ms, no_changes, organization_id, points_cost)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       Date.now(),
       taskName || 'diagram',
@@ -224,20 +246,29 @@ export const historyService = {
       (suggestions || '').slice(0, 5000),
       processingTimeMs || 0,
       noChanges ? 1 : 0,
+      organizationId || null,
+      pointsCost || 0,
     )
     return result.lastInsertRowid
   },
 
-  listRefineHistory({ page = 1, pageSize = 20 } = {}) {
+  listRefineHistory({ page = 1, pageSize = 20, organizationId } = {}) {
     const offset = (page - 1) * pageSize
+    const whereClause = organizationId ? 'WHERE organization_id = ?' : ''
+    const params = organizationId ? [organizationId, pageSize, offset] : [pageSize, offset]
     const records = db.prepare(`
-      SELECT * FROM refine_history ORDER BY created_at DESC LIMIT ? OFFSET ?
-    `).all(pageSize, offset)
-    const { total } = db.prepare(`SELECT COUNT(*) AS total FROM refine_history`).get()
-    return { records, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+      SELECT * FROM refine_history ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).all(...params)
+    const totalQuery = organizationId 
+      ? db.prepare(`SELECT COUNT(*) AS total FROM refine_history WHERE organization_id = ?`).get(organizationId)
+      : db.prepare(`SELECT COUNT(*) AS total FROM refine_history`).get()
+    return { records, total: totalQuery.total, page, pageSize, totalPages: Math.ceil(totalQuery.total / pageSize) }
   },
 
-  deleteRefineRecord(id) {
+  deleteRefineRecord(id, organizationId) {
+    const record = db.prepare(`SELECT * FROM refine_history WHERE id = ?`).get(id)
+    if (!record) return
+    if (organizationId && record.organization_id !== organizationId) return
     db.prepare(`DELETE FROM refine_history WHERE id = ?`).run(id)
   },
 

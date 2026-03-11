@@ -94,10 +94,12 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted } from 'vue'
-import Plotly from 'plotly.js-dist-min'
 import { Download, ZoomIn, Warning } from '@element-plus/icons-vue'
 import EvolutionTimeline from './EvolutionTimeline.vue'
 import StepLog from './StepLog.vue'
+import { toAbsoluteUrl } from '@/utils/url.js'
+
+let Plotly = null
 
 const props = defineProps({
   candidate: { type: Object, required: true },
@@ -152,11 +154,11 @@ const finalImageSrc = computed(() => {
     const b64 = r[`target_${t}_critic_desc${i}_base64_jpg`]
     if (b64) return `data:image/jpeg;base64,${b64}`
     const url = r[`target_${t}_critic_desc${i}_image_url`]
-    if (url) return url
+    if (url) return toAbsoluteUrl(url)
   }
   const b64 = r[`target_${t}_stylist_desc0_base64_jpg`] || r[`target_${t}_desc0_base64_jpg`] || r[`target_${t}_vanilla_base64_jpg`]
   if (b64) return `data:image/jpeg;base64,${b64}`
-  return r[`target_${t}_stylist_desc0_image_url`] || r[`target_${t}_desc0_image_url`] || r[`target_${t}_vanilla_image_url`] || null
+  return toAbsoluteUrl(r[`target_${t}_stylist_desc0_image_url`] || r[`target_${t}_desc0_image_url`] || r[`target_${t}_vanilla_image_url`] || null)
 })
 
 // Keep finalImage for backward compat (base64 only, used in download)

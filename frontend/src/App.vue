@@ -1,41 +1,42 @@
 <template>
-  <el-container class="app-layout">
-    <el-aside :width="sidebarCollapsed ? '64px' : '220px'" class="app-sidebar">
-      <AppSidebar :collapsed="sidebarCollapsed" @toggle="sidebarCollapsed = !sidebarCollapsed" />
-    </el-aside>
-    <el-container>
-      <el-header class="app-header">
-        <AppHeader />
-      </el-header>
-      <el-main class="app-main">
-        <router-view />
-      </el-main>
+  <div v-if="route.path === '/login'">
+    <router-view />
+  </div>
+  <div v-else-if="!authStore.isLoggedIn">
+    <router-view />
+  </div>
+  <div v-else>
+    <el-container class="app-layout">
+      <el-aside :width="sidebarCollapsed ? '72px' : '240px'" class="app-sidebar">
+        <AppSidebar :collapsed="sidebarCollapsed" @toggle="sidebarCollapsed = !sidebarCollapsed" />
+      </el-aside>
+      <el-container>
+        <el-header class="app-header">
+          <AppHeader />
+        </el-header>
+        <el-main class="app-main">
+          <router-view />
+        </el-main>
+      </el-container>
     </el-container>
-  </el-container>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElNotification } from 'element-plus'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore.js'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
-import api from '@/api/index.js'
 
+const route = useRoute()
+const authStore = useAuthStore()
 const sidebarCollapsed = ref(false)
 
 onMounted(async () => {
-  try {
-    const res = await api.health()
-    if (!res?.data?.envFileExists) {
-      ElNotification({
-        title: '缺少 .env 配置文件',
-        message: '后端未检测到 backend/.env，请参考 backend/.env.example 创建 .env 后重启后端。',
-        type: 'warning',
-        duration: 0,
-      })
-    }
-  } catch {
-    // ignore health check failures here
+  // 初始化 auth store
+  if (authStore.token) {
+    await authStore.init()
   }
 })
 </script>
@@ -44,23 +45,26 @@ onMounted(async () => {
 .app-layout {
   height: 100vh;
   overflow: hidden;
+  background: #F8FAFC;
 }
 .app-sidebar {
-  background: #1c1917;
-  transition: width 0.2s;
+  background: #ffffff;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.02);
 }
 .app-header {
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0 32px;
   height: var(--header-height);
   display: flex;
   align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 .app-main {
-  background: #f9fafb;
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
   overflow-y: auto;
-  padding: 24px;
+  padding: 24px 32px;
 }
 </style>

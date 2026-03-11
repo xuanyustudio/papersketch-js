@@ -3,10 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #eab308;
-  --color-primary-light: #fef9c3;
+  /* Design System Colors */
+  --color-primary: #0891B2;
+  --color-primary-light: #22D3EE;
+  --color-secondary: #22D3EE;
+  --color-cta: #22C55E;
+  --color-background: #ECFEFF;
+  --color-text: #164E63;
+  --color-text-muted: #475569;
+  
   --sidebar-width: 280px;
   --header-height: 60px;
+  
+  /* Smooth transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
 * {
@@ -17,7 +29,16 @@
 
 html, body, #app {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Smooth transitions globally */
+a, button, .el-button, .el-menu-item, .el-dropdown-item {
+  transition: all var(--transition-normal);
 }
 
 /* Scrollbar styling */
@@ -26,19 +47,63 @@ html, body, #app {
 ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-/* Element Plus tweaks */
+/* Element Plus overrides - Primary color: Cyan #0891B2 */
 .el-button--primary {
-  --el-button-bg-color: #eab308;
-  --el-button-border-color: #eab308;
-  --el-button-hover-bg-color: #ca8a04;
-  --el-button-hover-border-color: #ca8a04;
-  --el-button-active-bg-color: #a16207;
-  --el-button-text-color: #1c1917;
+  --el-button-bg-color: #0891B2;
+  --el-button-border-color: #0891B2;
+  --el-button-hover-bg-color: #0e7490;
+  --el-button-hover-border-color: #0e7490;
+  --el-button-active-bg-color: #155e75;
+  --el-button-text-color: #ffffff;
 }
 
+/* Tabs */
 .el-tabs__item.is-active {
-  color: #ca8a04;
+  color: #0891B2;
+  font-weight: 600;
 }
 .el-tabs__active-bar {
-  background-color: #eab308;
+  background-color: #0891B2;
+}
+
+/* Links */
+a {
+  color: #0891B2;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  color: #0e7490;
+}
+
+/* Card hover effects */
+.el-card {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+.el-card:hover {
+  box-shadow: 0 10px 40px rgba(8, 145, 178, 0.1);
+}
+
+/* Input focus states */
+.el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2) !important;
+}
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2) !important;
+}
+
+/* Menu active state */
+.el-menu-item.is-active {
+  background-color: rgba(8, 145, 178, 0.1) !important;
+  color: #0891B2 !important;
+}
+.el-menu-item:hover {
+  background-color: rgba(8, 145, 178, 0.05) !important;
+}
+
+/* Tag styles */
+.el-tag--warning {
+  --el-tag-bg-color: #fef9c3;
+  --el-tag-border-color: #fde047;
+  --el-tag-text-color: #a16207;
 }

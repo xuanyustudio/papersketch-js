@@ -83,12 +83,14 @@
 import { onUnmounted } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import { useGenerateStore } from '@/stores/generateStore.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { useWebSocket } from '@/composables/useWebSocket.js'
 import api from '@/api/index.js'
 import SettingsPanel from '@/components/generate/SettingsPanel.vue'
 import CandidateGrid from '@/components/generate/CandidateGrid.vue'
 
 const store = useGenerateStore()
+const authStore = useAuthStore()
 const { emit, on, socket } = useWebSocket()
 
 // ─── Reconnect & job sync ─────────────────────────────────────
@@ -173,6 +175,7 @@ on('generate:all_complete', ({ jobId }) => {
   if (jobId === store.jobId) {
     store.setAllComplete()
     ElMessage.success('所有候选已生成完毕！')
+    authStore.refreshPoints()
   }
 })
 
@@ -193,6 +196,8 @@ async function handleGenerate() {
   const jobId = await store.startGeneration()
   if (!jobId) return
 
+  const authStore = useAuthStore()
+  
   // Trigger the pipeline via WebSocket
   emit('generate:start', {
     jobId,
@@ -206,6 +211,8 @@ async function handleGenerate() {
     maxCriticRounds: store.maxCriticRounds,
     modelName: store.modelName || undefined,
     imageModelName: store.imageModelName || undefined,
+    organizationId: authStore.currentOrganization?.id,
+    userId: authStore.user?.id,
   })
 }
 

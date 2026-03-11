@@ -63,6 +63,12 @@
         </template>
       </el-table-column>
 
+      <el-table-column label="积分" width="80" align="center">
+        <template #default="{ row }">
+          <el-tag type="warning" size="small">{{ row.points_cost || 0 }}</el-tag>
+        </template>
+      </el-table-column>
+
       <el-table-column label="耗时" width="80" align="center">
         <template #default="{ row }">
           {{ row.total_time_ms ? (row.total_time_ms / 1000).toFixed(0) + 's' : '—' }}
@@ -136,9 +142,8 @@
             <template #default="{ row }">
               <img
                 v-if="row.original_image_url"
-                :src="row.original_image_url"
-                class="refine-thumb"
-                @click="previewImage = row.original_image_url; previewVisible = true"
+                :src="toAbsoluteUrl(row.original_image_url)"
+                @click="previewImage = toAbsoluteUrl(row.original_image_url); previewVisible = true"
               />
               <span v-else class="no-img">—</span>
             </template>
@@ -148,9 +153,8 @@
             <template #default="{ row }">
               <img
                 v-if="row.polished_image_url"
-                :src="row.polished_image_url"
-                class="refine-thumb"
-                @click="previewImage = row.polished_image_url; previewVisible = true"
+                :src="toAbsoluteUrl(row.polished_image_url)"
+                @click="previewImage = toAbsoluteUrl(row.polished_image_url); previewVisible = true"
               />
               <el-tag v-else size="small" type="info">无需修改</el-tag>
             </template>
@@ -171,6 +175,12 @@
           <el-table-column label="耗时" width="75" align="center">
             <template #default="{ row }">
               {{ row.processing_time_ms ? (row.processing_time_ms / 1000).toFixed(0) + 's' : '—' }}
+            </template>
+          </el-table-column>
+
+          <el-table-column label="积分" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag type="warning" size="small">{{ row.points_cost || 0 }}</el-tag>
             </template>
           </el-table-column>
 
@@ -285,10 +295,10 @@
                   v-for="stage in getStageImages(c.result, currentDetail.task_name)"
                   :key="stage.label"
                   class="hc-stage-thumb"
-                  @click="previewImage = stage.url; previewVisible = true"
+                  @click="previewImage = toAbsoluteUrl(stage.url); previewVisible = true"
                   :title="stage.label"
                 >
-                  <img :src="stage.url" loading="lazy" />
+                  <img :src="toAbsoluteUrl(stage.url)" loading="lazy" />
                   <span>{{ stage.label }}</span>
                 </div>
               </div>
@@ -335,6 +345,7 @@ import { useGenerateStore } from '@/stores/generateStore.js'
 import api from '@/api/index.js'
 import StepLog from '@/components/generate/StepLog.vue'
 import { getExpModeLabel } from '@/constants/expModes.js'
+import { toAbsoluteUrl } from '@/utils/url.js'
 
 const router = useRouter()
 const generateStore = useGenerateStore()
@@ -416,11 +427,11 @@ function getFinalImageUrl(result, taskName) {
 
   // Prefer disk-stored URLs
   for (let i = 3; i >= 0; i--) {
-    if (result[`target_${t}_critic_desc${i}_image_url`]) return result[`target_${t}_critic_desc${i}_image_url`]
+    if (result[`target_${t}_critic_desc${i}_image_url`]) return toAbsoluteUrl(result[`target_${t}_critic_desc${i}_image_url`])
   }
-  if (result[`target_${t}_stylist_desc0_image_url`]) return result[`target_${t}_stylist_desc0_image_url`]
-  if (result[`target_${t}_desc0_image_url`]) return result[`target_${t}_desc0_image_url`]
-  if (result[`target_${t}_vanilla_image_url`]) return result[`target_${t}_vanilla_image_url`]
+  if (result[`target_${t}_stylist_desc0_image_url`]) return toAbsoluteUrl(result[`target_${t}_stylist_desc0_image_url`])
+  if (result[`target_${t}_desc0_image_url`]) return toAbsoluteUrl(result[`target_${t}_desc0_image_url`])
+  if (result[`target_${t}_vanilla_image_url`]) return toAbsoluteUrl(result[`target_${t}_vanilla_image_url`])
 
   // Fallback: base64 kept in DB when disk save failed
   for (let i = 3; i >= 0; i--) {

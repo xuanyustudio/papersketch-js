@@ -15,6 +15,8 @@ import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { apiRateLimiter } from './middleware/rateLimiter.js'
 import { registerSocketHandlers } from './socket/handlers.js'
 import { resumeInterruptedJobs } from './services/JobResumeService.js'
+import { bootstrapMysql } from './bootstrap-mysql.js'
+import { mountTenancy } from './middleware/tenancy.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -23,11 +25,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 const httpServer = createServer(app)
 
+// Initialize MySQL connection pool (MVP)
+bootstrapMysql()
+
+// Mount tenancy middleware to bind organization scope
+mountTenancy(app)
+
 // ─── Socket.io setup ──────────────────────────────────────────
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: config.corsOrigin,
+    origin: config.corsOrigin.split(',').map(o => o.trim()),
     methods: ['GET', 'POST'],
   },
   maxHttpBufferSize: 50 * 1024 * 1024, // 50MB for image transfers
@@ -37,17 +45,39 @@ io.on('connection', (socket) => registerSocketHandlers(socket))
 
 // ─── Middleware ───────────────────────────────────────────────
 
-app.use(helmet({ contentSecurityPolicy: false }))
-app.use(cors({ origin: config.corsOrigin, credentials: true }))
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = config.corsOrigin.split(',').map(o => o.trim())
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+}
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}))
+app.use(cors(corsOptions))
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
 // ─── Static: serve generated images ──────────────────────────
 mkdirSync(IMAGES_ROOT, { recursive: true })
-app.use('/images', express.static(IMAGES_ROOT, {
+
+const imageStatic = express.static(IMAGES_ROOT, {
   maxAge: '7d',
   immutable: true,
-}))
+})
+
+app.use('/images', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  imageStatic(req, res, next)
+})
 
 // ─── API Routes ───────────────────────────────────────────────
 

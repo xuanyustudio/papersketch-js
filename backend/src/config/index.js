@@ -38,7 +38,7 @@ const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isProd: process.env.NODE_ENV === 'production',
 
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:81',
 
   googleApiKey: getVal('GOOGLE_API_KEY', 'api_keys.google_api_key'),
   openaiApiKey: getVal('OPENAI_API_KEY', 'api_keys.openai_api_key'),

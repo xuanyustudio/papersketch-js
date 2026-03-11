@@ -6,18 +6,6 @@ import logger from './logger.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 export const IMAGES_ROOT = resolve(__dirname, '../../../data/images')
 
-// Stage name map for readable filenames
-// critic_desc{n} → critic_r{n+1} so the filename matches the UI label (Critic R1, R2, R3...)
-const STAGE_FILENAME = {
-  desc0: 'planner',
-  stylist_desc0: 'stylist',
-  critic_desc0: 'critic_r1',
-  critic_desc1: 'critic_r2',
-  critic_desc2: 'critic_r3',
-  critic_desc3: 'critic_r4',
-  vanilla: 'vanilla',
-}
-
 /**
  * Save a base64 image to disk.
  * @param {string} jobId
@@ -48,6 +36,18 @@ export function saveImage(jobId, candidateIdx, stageKey, base64, taskName = 'dia
     })
     return null
   }
+}
+
+// Stage name map for readable filenames
+// critic_desc{n} → critic_r{n+1} so the filename matches the UI label (Critic R1, R2, R3...)
+const STAGE_FILENAME = {
+  desc0: 'planner',
+  stylist_desc0: 'stylist',
+  critic_desc0: 'critic_r1',
+  critic_desc1: 'critic_r2',
+  critic_desc2: 'critic_r3',
+  critic_desc3: 'critic_r4',
+  vanilla: 'vanilla',
 }
 
 /**

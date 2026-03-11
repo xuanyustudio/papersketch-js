@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
+import { ElMessage } from 'element-plus'
 import api from '@/api/index.js'
 import { normalizeExpMode } from '@/constants/expModes.js'
+import { useAuthStore } from './authStore.js'
 
 export const useGenerateStore = defineStore('generate', () => {
   // ─── State ─────────────────────────────────────────────────
@@ -48,6 +50,9 @@ export const useGenerateStore = defineStore('generate', () => {
   async function startGeneration() {
     if (isGenerating.value) return null
 
+    const authStore = useAuthStore()
+    const organizationId = authStore.currentOrganization?.id
+
     error.value = null
     isGenerating.value = true
     completedCount.value = 0
@@ -70,6 +75,7 @@ export const useGenerateStore = defineStore('generate', () => {
         maxCriticRounds: maxCriticRounds.value,
         modelName: modelName.value || undefined,
         imageModelName: imageModelName.value || undefined,
+        organizationId,
       })
 
       jobId.value = res.data.jobId
@@ -88,6 +94,7 @@ export const useGenerateStore = defineStore('generate', () => {
       return res.data.jobId
     } catch (err) {
       error.value = err.message
+      ElMessage.error(err.message)
       isGenerating.value = false
       return null
     }

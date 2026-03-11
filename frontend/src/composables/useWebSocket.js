@@ -1,11 +1,13 @@
 import { ref, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 
+const WS_URL = (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3000').replace(/^http/, 'ws')
+
 let socketInstance = null
 
 function getSocket() {
   if (!socketInstance) {
-    socketInstance = io(window.location.origin, {
+    socketInstance = io(WS_URL, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: Infinity,   // never give up
       reconnectionDelay: 1000,

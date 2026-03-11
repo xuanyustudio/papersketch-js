@@ -125,8 +125,10 @@
 import { ref } from 'vue'
 import { Download } from '@element-plus/icons-vue'
 import { useRefineStore } from '@/stores/refineStore.js'
+import { useAuthStore } from '@/stores/authStore.js'
 
 const store = useRefineStore()
+const authStore = useAuthStore()
 const editPrompt = ref('')
 const taskName = ref('diagram')
 const aspectRatio = ref('16:9')
@@ -147,6 +149,7 @@ async function handleRefine() {
     aspectRatio: aspectRatio.value,
     taskName: taskName.value,
   })
+  authStore.refreshPoints()
 }
 
 function downloadRefined() {

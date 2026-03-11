@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { getJobStatus } from '../socket/handlers.js'
+import { authMiddleware } from '../middleware/auth.js'
+import { requireOrg } from '../middleware/requireOrg.js'
 
 const router = Router()
 
@@ -9,14 +11,14 @@ const router = Router()
  * Creates a job and returns a jobId.
  * Actual processing is triggered via WebSocket 'generate:start' event.
  */
-router.post('/start', (req, res) => {
+router.post('/start', authMiddleware, requireOrg, (req, res) => {
   const {
     methodContent,
     caption,
     taskName = 'diagram',
     expMode = 'demo_full',
     retrievalSetting = 'auto',
-    numCandidates = 5,
+    numCandidates = 3,
     aspectRatio = '16:9',
     maxCriticRounds = 3,
     modelName,
@@ -30,14 +32,16 @@ router.post('/start', (req, res) => {
   }
 
   const jobId = uuidv4()
-  res.json({ success: true, data: { jobId }, error: null })
+  
+  // Return jobId and organizationId (socket handler will use it)
+  res.json({ success: true, data: { jobId, organizationId: req.organizationId }, error: null })
 })
 
 /**
  * GET /api/generate/status/:jobId
  * Poll job status (fallback for environments without WebSocket)
  */
-router.get('/status/:jobId', (req, res) => {
+router.get('/status/:jobId', authMiddleware, requireOrg, (req, res) => {
   const { jobId } = req.params
   const status = getJobStatus(jobId)
   if (!status) {

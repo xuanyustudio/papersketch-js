@@ -46,9 +46,9 @@
                 <!-- Vanilla may carry a generated image -->
                 <div v-if="s.output.image_url" class="step-output image-output">
                   <img
-                    :src="s.output.image_url"
+                    :src="toAbsoluteUrl(s.output.image_url)"
                     class="step-thumbnail"
-                    @click="$emit('preview', s.output.image_url)"
+                    @click="$emit('preview', toAbsoluteUrl(s.output.image_url))"
                     title="点击查看大图"
                   />
                   <span class="thumb-hint">Vanilla 直接生成图像</span>
@@ -65,9 +65,9 @@
                 <div class="step-output image-output">
                   <template v-if="s.output.image_url">
                     <img
-                      :src="s.output.image_url"
+                      :src="toAbsoluteUrl(s.output.image_url)"
                       class="step-thumbnail"
-                      @click="$emit('preview', s.output.image_url)"
+                      @click="$emit('preview', toAbsoluteUrl(s.output.image_url))"
                       title="点击查看大图"
                     />
                     <span class="thumb-hint">轮次 {{ s.output.round + 1 }} 生成图像</span>
@@ -120,6 +120,7 @@
 
 <script setup>
 import { List } from '@element-plus/icons-vue'
+import { toAbsoluteUrl } from '@/utils/url.js'
 
 defineProps({
   steps: { type: Array, default: () => [] },
