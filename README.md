@@ -73,6 +73,8 @@ Retriever → Planner → Stylist → Visualizer → Critic（多轮迭代）
 | 📋 精炼历史 | 手动精炼记录单独存档，历史页"手动精炼"标签页随时查阅 |
 | 🌐 语言自适应 | 生成图的标签/注释随输入语言自动切换（中文→中文，英文→英文）|
 | 🆘 新手帮助中心 | 内置帮助页，含使用原理、上手步骤、常见问题 |
+| 👥 多租户支持 | 组织/团队隔离，积分配额管理 |
+| 🔐 用户认证 | 登录注册，会话管理 |
 
 ---
 
@@ -88,7 +90,8 @@ Retriever → Planner → Stylist → Visualizer → Critic（多轮迭代）
 | 后端框架 | Node.js + Express |
 | AI SDK | @google/genai + openai |
 | 日志 | Winston |
-| 持久化 | SQLite（node:sqlite）+ 本地文件系统 |
+| 持久化 | SQLite（node:sqlite）+ MySQL + 本地文件系统 |
+| 认证 | JWT + bcrypt |
 
 ---
 

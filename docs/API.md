@@ -34,6 +34,133 @@
 
 ---
 
+### POST /api/auth/register
+
+用户注册。
+
+**请求体：**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "用户名"
+}
+```
+
+**响应：**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "email": "user@example.com",
+    "name": "用户名",
+    "organizationId": 1
+  }
+}
+```
+
+---
+
+### POST /api/auth/login
+
+用户登录。
+
+**请求体：**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**响应：**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user": {
+      "userId": 1,
+      "email": "user@example.com",
+      "name": "用户名",
+      "organizationId": 1,
+      "role": "user"
+    }
+  }
+}
+```
+
+---
+
+### GET /api/auth/me
+
+获取当前用户信息（需认证）。
+
+**请求头：**
+```
+Authorization: Bearer <token>
+```
+
+**响应：**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "email": "user@example.com",
+    "name": "用户名",
+    "organizationId": 1,
+    "role": "user",
+    "points": 100
+  }
+}
+```
+
+---
+
+### GET /api/organization
+
+获取当前用户所属组织信息（需认证）。
+
+**响应：**
+```json
+{
+  "success": true,
+  "data": {
+    "orgId": 1,
+    "name": "团队名称",
+    "totalPoints": 1000,
+    "usedPoints": 100,
+    "memberCount": 5
+  }
+}
+```
+
+---
+
+### POST /api/admin/user/:userId/points
+
+管理员调整用户积分（需管理员权限）。
+
+**请求体：**
+```json
+{
+  "points": 500,
+  "action": "add" // "add" | "set"
+}
+```
+
+---
+
+### GET /api/admin/users
+
+管理员获取用户列表（需管理员权限）。
+
+查询参数：`page`, `pageSize`, `orgId`
+
+---
+
 ### POST /api/generate/start
 
 创建一个生成任务，返回 jobId。任务进度和结果通过 WebSocket 推送。
