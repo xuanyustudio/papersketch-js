@@ -63,6 +63,8 @@ router.get('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
     let orgs = []
     let generateStats = [{ total_jobs: 0, total_points: 0 }]
     let refineStats = [{ total_refines: 0, total_points: 0 }]
+    let recentJobs = []
+    let recentRefines = []
     
     try {
       orgs = await query(
@@ -89,6 +91,28 @@ router.get('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
         [userId]
       )
     } catch (e) { console.warn('refine stats query failed:', e.message) }
+
+    // 获取最近生成记录（最近10条）
+    try {
+      const orgIds = orgs.map(o => o.id)
+      logger.info(`[Admin] user ${userId} orgs:`, orgs)
+      if (orgIds.length > 0) {
+        const placeholders = orgIds.map(() => '?').join(',')
+        recentJobs = await query(
+          `SELECT id, task_name, exp_mode, status, points_cost, created_at, completed_at 
+           FROM jobs WHERE organization_id IN (${placeholders}) 
+           ORDER BY created_at DESC LIMIT 10`,
+          orgIds
+        )
+        recentRefines = await query(
+          `SELECT id, task_name, model_name, points_cost, created_at, no_changes 
+           FROM refine_history WHERE organization_id IN (${placeholders}) 
+           ORDER BY created_at DESC LIMIT 10`,
+          orgIds
+        )
+        logger.info(`[Admin] user ${userId} recentJobs:`, recentJobs.length, 'recentRefines:', recentRefines.length)
+      }
+    } catch (e) { console.warn('recent records query failed:', e.message) }
     
     res.json({
       success: true,
@@ -100,7 +124,9 @@ router.get('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
           generatePoints: generateStats[0]?.total_points || 0,
           refineCount: refineStats[0]?.total_refines || 0,
           refinePoints: refineStats[0]?.total_points || 0,
-        }
+        },
+        recentJobs,
+        recentRefines,
       }
     })
   } catch (error) {

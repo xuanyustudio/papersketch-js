@@ -153,16 +153,19 @@ export class LLMService {
         : userContent,
     })
 
+    const requestBody = {
+      model,
+      messages,
+      temperature: config.temperature,
+      // max_tokens 由各模型自行控制
+    }
+    logger.info(`[LLM] request body:`, JSON.stringify(requestBody, null, 2))
+
     const textTimeoutMs = this.#computeTextTimeoutMs(inputLen, imgCount)
     const timeoutSec = Math.round(textTimeoutMs / 1000)
     logger.info(`[LLM] generateText  timeout=${timeoutSec}s  dynamic=${config.textTimeoutDynamicEnabled ? 'on' : 'off'}`)
 
-    const apiCall = this.relay.chat.completions.create({
-      model,
-      messages,
-      temperature: config.temperature,
-      max_tokens: config.maxOutputTokens,
-    })
+    const apiCall = this.relay.chat.completions.create(requestBody)
 
     const response = await this.#withTimeout(apiCall, textTimeoutMs, `Text generation timeout (${timeoutSec}s)`)
     return response.choices?.[0]?.message?.content ?? ''

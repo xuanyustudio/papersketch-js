@@ -83,6 +83,48 @@
             <el-statistic title="精炼次数" :value="selectedUser.stats.refineCount" />
           </el-col>
         </el-row>
+
+        <el-divider>最近生成记录</el-divider>
+        <el-table :data="selectedUser.recentJobs" size="small" max-height="200" v-if="selectedUser.recentJobs?.length">
+          <el-table-column prop="id" label="任务ID" width="180" show-overflow-tooltip />
+          <el-table-column prop="task_name" label="类型" width="80" />
+          <el-table-column prop="exp_mode" label="模式" width="120" show-overflow-tooltip />
+          <el-table-column prop="status" label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : 'info'" size="small">
+                {{ row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="points_cost" label="积分" width="60" />
+          <el-table-column prop="created_at" label="时间" width="140">
+            <template #default="{ row }">
+              {{ formatTime(row.created_at) }}
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-else description="暂无生成记录" :image-size="60" />
+
+        <el-divider>最近精炼记录</el-divider>
+        <el-table :data="selectedUser.recentRefines" size="small" max-height="200" v-if="selectedUser.recentRefines?.length">
+          <el-table-column prop="id" label="ID" width="60" />
+          <el-table-column prop="task_name" label="类型" width="80" />
+          <el-table-column prop="model_name" label="模型" width="140" show-overflow-tooltip />
+          <el-table-column prop="points_cost" label="积分" width="60" />
+          <el-table-column prop="no_changes" label="无变化" width="70">
+            <template #default="{ row }">
+              <el-tag :type="row.no_changes ? 'info' : 'success'" size="small">
+                {{ row.no_changes ? '是' : '否' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="时间" width="140">
+            <template #default="{ row }">
+              {{ formatTime(row.created_at) }}
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-else description="暂无精炼记录" :image-size="60" />
       </div>
     </el-dialog>
 

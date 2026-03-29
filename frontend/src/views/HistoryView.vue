@@ -270,8 +270,8 @@
           >
             <div class="hc-header">
               <span>候选 {{ c.candidate_idx + 1 }}</span>
-              <el-tag :type="c.status === 'completed' ? 'success' : 'danger'" size="small">
-                {{ c.status === 'completed' ? '已完成' : '失败' }}
+              <el-tag :type="c.status === 'completed' ? 'success' : c.status === 'error' ? 'danger' : 'warning'" size="small">
+                {{ c.status === 'completed' ? '已完成' : c.status === 'error' ? '失败' : '运行中' }}
               </el-tag>
             </div>
 
@@ -484,12 +484,14 @@ function formatTime(ts) {
 
 function statusType(row) {
   if (row.status === 'completed') return row.failed_candidates > 0 ? 'warning' : 'success'
+  if (row.status === 'partial') return 'warning'
   if (row.status === 'running') return 'info'
   return 'danger'
 }
 
 function statusLabel(row) {
   if (row.status === 'running') return '进行中'
+  if (row.status === 'partial') return '部分完成'
   if (row.status === 'completed') return row.failed_candidates > 0 ? '部分完成' : '已完成'
   return '失败'
 }

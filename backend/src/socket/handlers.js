@@ -164,17 +164,21 @@ export function registerSocketHandlers(socket) {
       const results = await processor.processBatch(dataList, config.maxConcurrentJobs)
       const totalTimeMs = Date.now() - startedAt
       const job = jobs.get(jobId)
-      if (job) job.status = 'completed'
+      
+      // Check if any candidate failed
+      const hasError = job?.results?.length < params.numCandidates
+      const jobStatus = hasError ? 'partial' : 'completed'
+      if (job) job.status = jobStatus
 
       // Mark job complete in DB
-      historyService.completeJob(jobId, totalTimeMs)
+      historyService.completeJob(jobId, totalTimeMs, jobStatus)
 
-      socket.emit('generate:all_complete', { jobId, results, totalTimeMs })
-      logger.info(`[Job ${jobId}] All ${results.length} candidates completed`)
+      socket.emit('generate:all_complete', { jobId, results, totalTimeMs, status: jobStatus })
+      logger.info(`[Job ${jobId}] All ${results.length}/${params.numCandidates} candidates completed, status: ${jobStatus}`)
     } catch (err) {
       const job = jobs.get(jobId)
       if (job) job.status = 'failed'
-      historyService.completeJob(jobId, 0)
+      historyService.completeJob(jobId, 0, 'failed')
       logger.error(`[Job ${jobId}] Fatal error`, { error: err.message })
       socket.emit('generate:error', { jobId, candidateId: -1, error: err.message })
     }

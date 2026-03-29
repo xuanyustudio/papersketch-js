@@ -150,11 +150,11 @@ export const historyService = {
     }
   },
 
-  completeJob(jobId, totalTimeMs) {
+  completeJob(jobId, totalTimeMs, status = 'completed') {
     db.prepare(`
-      UPDATE jobs SET status = 'completed', completed_at = ?, total_time_ms = ?
+      UPDATE jobs SET status = ?, completed_at = ?, total_time_ms = ?
       WHERE id = ?
-    `).run(Date.now(), totalTimeMs, jobId)
+    `).run(status, Date.now(), totalTimeMs, jobId)
   },
 
   listJobs({ page = 1, pageSize = 20, organizationId } = {}) {
@@ -192,10 +192,17 @@ export const historyService = {
     ).all(jobId)
 
     const candidates = rawCandidates.map((c) => {
-      if (!c.result_json) return { ...c, result: null, result_json: undefined }
-
-      let result
-      try { result = JSON.parse(c.result_json) } catch { result = null }
+      // Handle error status - load from checkpoint_data if available
+      let result = null
+      if (c.status === 'error' && c.checkpoint_data) {
+        try {
+          result = JSON.parse(c.checkpoint_data)
+        } catch (e) {
+          logger.warn(`Failed to parse checkpoint_data for job ${jobId} candidate ${c.candidate_idx}`)
+        }
+      } else if (c.result_json) {
+        try { result = JSON.parse(c.result_json) } catch { result = null }
+      }
 
       // Lazy repair: if any base64 images are still in the result (disk save
       // failed earlier), try to save them now and update the DB record.
@@ -216,7 +223,7 @@ export const historyService = {
         }
       }
 
-      return { ...c, result, result_json: undefined }
+      return { ...c, result, result_json: undefined, checkpoint_data: undefined }
     })
 
     return { ...job, candidates }
